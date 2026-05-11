@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Jade companion app for local WebSerial connection">
+  <title>Jade Local Wallet</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="https://liquidwebwallet.org/pico.min.css">
+  <style>
+    :root {
+      --jade-green: #95f2c9;
+      --jade-bright: #2fce89;
+      --panel-bg: #16221e;
+    }
+
+    body {
+      background: radial-gradient(circle at 10% 10%, #1a2a24 0%, #0c1311 55%, #090f0d 100%);
+    }
+
+    .hero {
+      border: 1px solid #25342e;
+      border-radius: 14px;
+      padding: 1.25rem;
+      background: #0f1714;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      border-radius: 999px;
+      padding: .35rem .7rem;
+      background: var(--panel-bg);
+      border: 1px solid #2b3f38;
+      color: var(--jade-green);
+      font-weight: 600;
+      font-size: .85rem;
+      margin-bottom: 1rem;
+    }
+
+    .dot {
+      width: .55rem;
+      height: .55rem;
+      border-radius: 50%;
+      background: #5e726a;
+    }
+
+    .dot.connected {
+      background: var(--jade-bright);
+      box-shadow: 0 0 0 4px rgba(47, 206, 137, .18);
+    }
+
+    .panel {
+      border-radius: 12px;
+      border: 1px solid #25342e;
+      background: #0f1714;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    pre {
+      margin: 0;
+      border-radius: 8px;
+      border: 1px solid #2a3c35;
+      background: #0b1210;
+      padding: .8rem;
+      max-height: 16rem;
+      overflow: auto;
+      font-size: .83rem;
+    }
+
+    .actions {
+      display: flex;
+      gap: .75rem;
+      flex-wrap: wrap;
+      margin-bottom: .75rem;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      word-break: break-all;
+      font-size: .92rem;
+    }
+
+    .small {
+      color: #a9beb6;
+      font-size: .92rem;
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: .6rem;
+    }
+
+    .detail-item {
+      border: 1px solid #2a3c35;
+      border-radius: 10px;
+      padding: .65rem .75rem;
+      background: #0b1210;
+    }
+
+    .detail-label {
+      font-size: .74rem;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: #8fa59d;
+      margin-bottom: .3rem;
+    }
+
+    .detail-value {
+      font-size: .95rem;
+      color: #ddf7ea;
+      word-break: break-word;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: .12rem .5rem;
+      font-size: .78rem;
+      border: 1px solid #345246;
+      background: #132119;
+      color: #bff6dd;
+      font-weight: 600;
+    }
+
+    .badge.warn {
+      border-color: #6a5931;
+      background: #241d10;
+      color: #f7de95;
+    }
+
+    .tabs {
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+      margin: 1rem 0;
+    }
+
+    .tab-btn {
+      border-radius: 999px;
+      padding: .35rem .9rem;
+      border: 1px solid #345246;
+      background: #101a16;
+      color: #bfe7d4;
+      cursor: pointer;
+      font-size: .88rem;
+    }
+
+    .tab-btn.active {
+      background: #1a2b24;
+      border-color: #4e7a68;
+      color: #d6ffee;
+      font-weight: 600;
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    .derivation-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .6rem;
+      align-items: center;
+      margin-bottom: .9rem;
+    }
+
+    .derivation-message {
+      color: #a9beb6;
+      font-size: .88rem;
+      margin-bottom: .75rem;
+    }
+
+    .derivation-controls {
+      display: grid;
+      gap: .75rem;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      margin-bottom: 1rem;
+    }
+
+    .result-grid {
+      display: grid;
+      gap: .75rem;
+      grid-template-columns: 1fr;
+    }
+
+    .qr-box img {
+      border: 1px solid #2a3c35;
+      border-radius: 10px;
+      background: #fff;
+      max-width: 240px;
+      width: 100%;
+      height: auto;
+    }
+
+    textarea.derivation-descriptor {
+      min-height: 110px;
+      font-size: .8rem;
+    }
+  </style>
+</head>
+<body>
+  <header class="container">
+    <hgroup>
+      <h1>Liquid Web Wallet</h1>
+      <p>A companion page for Blockstream Jade on local device</p>
+    </hgroup>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div class="status-pill"><span id="status-dot" class="dot"></span><span id="status-text">Not connected</span></div>
+
+      <div class="actions">
+        <label style="margin-bottom:0;">
+          Network
+          <select id="network-select">
+            <option value="mainnet" selected>Mainnet</option>
+            <option value="testnet">Testnet</option>
+          </select>
+        </label>
+        <button id="connect-btn">Connect to Jade</button>
+        <button id="unlock-btn" class="secondary" disabled>Unlock Jade</button>
+        <button id="refresh-btn" class="secondary" disabled>Refresh info</button>
+      </div>
+
+      <p id="message" class="small">Use Chrome/Edge on <code>https://</code> or <code>http://localhost</code>, then unlock Jade if prompted.</p>
+    </section>
+
+    <nav class="tabs" aria-label="Main sections">
+      <button class="tab-btn active" type="button" data-tab-target="tab-device-summary">Device Summary</button>
+      <button class="tab-btn" type="button" data-tab-target="tab-jade-details">Jade Details</button>
+      <button class="tab-btn" type="button" data-tab-target="tab-address-derivation">Liquid Address Derivation</button>
+    </nav>
+
+    <section id="tab-device-summary" class="panel tab-panel active">
+      <h3>Device Summary</h3>
+      <p><strong>Selected network:</strong> <span id="selected-network" class="mono">Mainnet</span></p>
+      <p><strong>Master xpub:</strong> <span id="master-xpub" class="mono">-</span></p>
+      <p><strong>Fingerprint:</strong> <span id="xpub-fingerprint" class="mono">-</span></p>
+      <p><strong>Master blinding key:</strong> <span id="master-blinding-key" class="mono">-</span></p>
+      <p><strong>Registered multisigs:</strong> <span id="multisig-count" class="mono">-</span></p>
+    </section>
+
+    <section id="tab-jade-details" class="panel tab-panel">
+      <h3>Jade Details</h3>
+      <div id="version-details" class="details-grid"></div>
+    </section>
+
+    <section id="tab-address-derivation" class="panel tab-panel">
+      <h3>Liquid Address Derivation</h3>
+      <p id="descriptor-status" class="derivation-message">Open this tab to compute descriptors from Jade.</p>
+      <label>
+        BIP49 Descriptor (sh(wpkh))
+        <textarea id="bip49-global-descriptor" class="derivation-descriptor mono" readonly></textarea>
+      </label>
+      <label>
+        BIP84 Descriptor (wpkh)
+        <textarea id="bip84-global-descriptor" class="derivation-descriptor mono" readonly></textarea>
+      </label>
+      <nav class="tabs" aria-label="Address formats">
+        <button class="tab-btn active" type="button" data-derivation-tab-target="derivation-bip49">BIP49 (P2SH-P2WPKH)</button>
+        <button class="tab-btn" type="button" data-derivation-tab-target="derivation-bip84">BIP84 (P2WPKH)</button>
+      </nav>
+      <div class="derivation-actions">
+        <button id="load-derivations-btn" type="button">Derive Selected</button>
+        <span id="derivation-status" class="derivation-message">Connect and unlock Jade, choose index/type, then derive.</span>
+      </div>
+
+      <div class="derivation-controls">
+        <label>
+          Index
+          <input id="derivation-index" type="number" min="0" step="1" value="0">
+        </label>
+        <label>
+          Type
+          <select id="derivation-chain">
+            <option value="0" selected>Address (external)</option>
+            <option value="1">Change (internal)</option>
+          </select>
+        </label>
+        <label>
+          <input id="derivation-confidential" type="checkbox" checked>
+          Confidential address
+        </label>
+      </div>
+
+      <div id="derivation-bip49" class="tab-panel active">
+        <h4>BIP49</h4>
+        <div class="result-grid">
+          <p><strong>Path:</strong> <span id="bip49-path" class="mono">-</span></p>
+          <p><strong>Address:</strong> <span id="bip49-address" class="mono">-</span></p>
+          <div class="qr-box">
+            <img id="bip49-qr" alt="BIP49 address QR code" hidden>
+          </div>
+        </div>
+      </div>
+
+      <div id="derivation-bip84" class="tab-panel">
+        <h4>BIP84</h4>
+        <div class="result-grid">
+          <p><strong>Path:</strong> <span id="bip84-path" class="mono">-</span></p>
+          <p><strong>Address:</strong> <span id="bip84-address" class="mono">-</span></p>
+          <div class="qr-box">
+            <img id="bip84-qr" alt="BIP84 address QR code" hidden>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

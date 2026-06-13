@@ -7,6 +7,7 @@ const networkSelect = document.getElementById("network-select");
 const statusDot = document.getElementById("status-dot");
 const statusText = document.getElementById("status-text");
 const message = document.getElementById("message");
+const connectedContent = document.getElementById("connected-content");
 const selectedNetwork = document.getElementById("selected-network");
 const masterXpub = document.getElementById("master-xpub");
 const xpubFingerprint = document.getElementById("xpub-fingerprint");
@@ -159,6 +160,7 @@ function clearDeviceInfo() {
 function setConnected(connected) {
   statusDot.classList.toggle("connected", connected);
   statusText.textContent = connected ? "Connected" : "Not connected";
+  connectedContent.hidden = !connected;
   connectBtn.textContent = connected ? "Disconnect Jade" : "Connect to Jade";
   connectBtn.classList.toggle("secondary", connected);
   unlockBtn.disabled = !connected;

@@ -75,7 +75,24 @@
       display: flex;
       gap: .75rem;
       flex-wrap: wrap;
+      align-items: flex-start;
       margin-bottom: .75rem;
+    }
+
+    .network-control {
+      margin-bottom: 0;
+    }
+
+    .network-control select {
+      margin-bottom: 0;
+    }
+
+    .action-buttons {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      min-height: 3rem;
+      margin-top: 1.5rem;
     }
 
     .mono {
@@ -141,14 +158,47 @@
       margin: 1rem 0;
     }
 
-    .tab-btn {
+    .tab-btn,
+    .app-button {
       border-radius: 999px;
-      padding: .35rem .9rem;
+      min-height: 0;
+      padding: .2rem .8rem;
       border: 1px solid #345246;
       background: #101a16;
       color: #bfe7d4;
       cursor: pointer;
       font-size: .88rem;
+      line-height: 1.25;
+    }
+
+    .app-button:hover,
+    .app-button:focus,
+    .tab-btn:hover,
+    .tab-btn:focus {
+      background: #1a2b24;
+      border-color: #4e7a68;
+      color: #d6ffee;
+    }
+
+    .app-button.secondary {
+      background: #101a16;
+      border-color: #345246;
+      color: #bfe7d4;
+    }
+
+    .app-button:disabled {
+      background: #101a16;
+      border-color: #2a3c35;
+      color: #6f857c;
+      opacity: .65;
+    }
+
+    .action-buttons > .app-button {
+      width: auto;
+      height: 1.9rem;
+      min-height: 1.9rem;
+      margin: 0;
+      padding: 0 .8rem;
     }
 
     .tab-btn.active {
@@ -184,7 +234,29 @@
       display: grid;
       gap: .75rem;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      align-items: end;
       margin-bottom: 1rem;
+    }
+
+    .confidential-control {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      height: 3rem;
+      margin-bottom: 0;
+    }
+
+    .confidential-control input[type="checkbox"] {
+      --pico-form-element-active-background-color: var(--jade-bright);
+      --pico-form-element-active-border-color: var(--jade-bright);
+      --pico-form-element-focus-color: rgba(47, 206, 137, .25);
+      margin: 0;
+      accent-color: var(--jade-bright);
+    }
+
+    .confidential-control input[type="checkbox"]:checked {
+      background-color: var(--jade-bright);
+      border-color: var(--jade-bright);
     }
 
     .result-grid {
@@ -221,101 +293,105 @@
       <div class="status-pill"><span id="status-dot" class="dot"></span><span id="status-text">Not connected</span></div>
 
       <div class="actions">
-        <label style="margin-bottom:0;">
+        <label class="network-control">
           Network
           <select id="network-select">
             <option value="mainnet" selected>Mainnet</option>
             <option value="testnet">Testnet</option>
           </select>
         </label>
-        <button id="connect-btn">Connect to Jade</button>
-        <button id="unlock-btn" class="secondary" disabled>Unlock Jade</button>
-        <button id="refresh-btn" class="secondary" disabled>Refresh info</button>
+        <div class="action-buttons">
+          <button id="connect-btn" class="app-button">Connect to Jade</button>
+          <button id="unlock-btn" class="app-button secondary" disabled>Unlock Jade</button>
+          <button id="refresh-btn" class="app-button secondary" disabled>Refresh info</button>
+        </div>
       </div>
 
       <p id="message" class="small">Use Chrome/Edge on <code>https://</code> or <code>http://localhost</code>, then unlock Jade if prompted.</p>
     </section>
 
-    <nav class="tabs" aria-label="Main sections">
-      <button class="tab-btn active" type="button" data-tab-target="tab-device-summary">Device Summary</button>
-      <button class="tab-btn" type="button" data-tab-target="tab-jade-details">Jade Details</button>
-      <button class="tab-btn" type="button" data-tab-target="tab-address-derivation">Liquid Address Derivation</button>
-    </nav>
-
-    <section id="tab-device-summary" class="panel tab-panel active">
-      <h3>Device Summary</h3>
-      <p><strong>Selected network:</strong> <span id="selected-network" class="mono">Mainnet</span></p>
-      <p><strong>Master xpub:</strong> <span id="master-xpub" class="mono">-</span></p>
-      <p><strong>Fingerprint:</strong> <span id="xpub-fingerprint" class="mono">-</span></p>
-      <p><strong>Master blinding key:</strong> <span id="master-blinding-key" class="mono">-</span></p>
-      <p><strong>Registered multisigs:</strong> <span id="multisig-count" class="mono">-</span></p>
-    </section>
-
-    <section id="tab-jade-details" class="panel tab-panel">
-      <h3>Jade Details</h3>
-      <div id="version-details" class="details-grid"></div>
-    </section>
-
-    <section id="tab-address-derivation" class="panel tab-panel">
-      <h3>Liquid Address Derivation</h3>
-      <p id="descriptor-status" class="derivation-message">Open this tab to compute descriptors from Jade.</p>
-      <label>
-        BIP49 Descriptor (sh(wpkh))
-        <textarea id="bip49-global-descriptor" class="derivation-descriptor mono" readonly></textarea>
-      </label>
-      <label>
-        BIP84 Descriptor (wpkh)
-        <textarea id="bip84-global-descriptor" class="derivation-descriptor mono" readonly></textarea>
-      </label>
-      <nav class="tabs" aria-label="Address formats">
-        <button class="tab-btn active" type="button" data-derivation-tab-target="derivation-bip49">BIP49 (P2SH-P2WPKH)</button>
-        <button class="tab-btn" type="button" data-derivation-tab-target="derivation-bip84">BIP84 (P2WPKH)</button>
+    <div id="connected-content" hidden>
+      <nav class="tabs" aria-label="Main sections">
+        <button class="tab-btn active" type="button" data-tab-target="tab-device-summary">Device Summary</button>
+        <button class="tab-btn" type="button" data-tab-target="tab-jade-details">Jade Details</button>
+        <button class="tab-btn" type="button" data-tab-target="tab-address-derivation">Liquid Address Derivation</button>
       </nav>
-      <div class="derivation-actions">
-        <button id="load-derivations-btn" type="button">Derive Selected</button>
-        <span id="derivation-status" class="derivation-message">Connect and unlock Jade, choose index/type, then derive.</span>
-      </div>
 
-      <div class="derivation-controls">
-        <label>
-          Index
-          <input id="derivation-index" type="number" min="0" step="1" value="0">
-        </label>
-        <label>
-          Type
-          <select id="derivation-chain">
-            <option value="0" selected>Address (external)</option>
-            <option value="1">Change (internal)</option>
-          </select>
-        </label>
-        <label>
-          <input id="derivation-confidential" type="checkbox" checked>
-          Confidential address
-        </label>
-      </div>
+      <section id="tab-device-summary" class="panel tab-panel active">
+        <h3>Device Summary</h3>
+        <p><strong>Selected network:</strong> <span id="selected-network" class="mono">Mainnet</span></p>
+        <p><strong>Master xpub:</strong> <span id="master-xpub" class="mono">-</span></p>
+        <p><strong>Fingerprint:</strong> <span id="xpub-fingerprint" class="mono">-</span></p>
+        <p><strong>Master blinding key:</strong> <span id="master-blinding-key" class="mono">-</span></p>
+        <p><strong>Registered multisigs:</strong> <span id="multisig-count" class="mono">-</span></p>
+      </section>
 
-      <div id="derivation-bip49" class="tab-panel active">
-        <h4>BIP49</h4>
-        <div class="result-grid">
-          <p><strong>Path:</strong> <span id="bip49-path" class="mono">-</span></p>
-          <p><strong>Address:</strong> <span id="bip49-address" class="mono">-</span></p>
-          <div class="qr-box">
-            <img id="bip49-qr" alt="BIP49 address QR code" hidden>
+      <section id="tab-jade-details" class="panel tab-panel">
+        <h3>Jade Details</h3>
+        <div id="version-details" class="details-grid"></div>
+      </section>
+
+      <section id="tab-address-derivation" class="panel tab-panel">
+        <h3>Liquid Address Derivation</h3>
+        <p id="descriptor-status" class="derivation-message">Open this tab to compute descriptors from Jade.</p>
+        <label>
+          BIP49 Descriptor (sh(wpkh))
+          <textarea id="bip49-global-descriptor" class="derivation-descriptor mono" readonly></textarea>
+        </label>
+        <label>
+          BIP84 Descriptor (wpkh)
+          <textarea id="bip84-global-descriptor" class="derivation-descriptor mono" readonly></textarea>
+        </label>
+        <nav class="tabs" aria-label="Address formats">
+          <button class="tab-btn active" type="button" data-derivation-tab-target="derivation-bip49">BIP49 (P2SH-P2WPKH)</button>
+          <button class="tab-btn" type="button" data-derivation-tab-target="derivation-bip84">BIP84 (P2WPKH)</button>
+        </nav>
+        <div class="derivation-actions">
+          <button id="load-derivations-btn" class="app-button" type="button">Derive Selected</button>
+          <span id="derivation-status" class="derivation-message">Connect and unlock Jade, choose index/type, then derive.</span>
+        </div>
+
+        <div class="derivation-controls">
+          <label>
+            Index
+            <input id="derivation-index" type="number" min="0" step="1" value="0">
+          </label>
+          <label>
+            Type
+            <select id="derivation-chain">
+              <option value="0" selected>Address (external)</option>
+              <option value="1">Change (internal)</option>
+            </select>
+          </label>
+          <label class="confidential-control">
+            <input id="derivation-confidential" type="checkbox" checked>
+            Confidential address
+          </label>
+        </div>
+
+        <div id="derivation-bip49" class="tab-panel active">
+          <h4>BIP49</h4>
+          <div class="result-grid">
+            <p><strong>Path:</strong> <span id="bip49-path" class="mono">-</span></p>
+            <p><strong>Address:</strong> <span id="bip49-address" class="mono">-</span></p>
+            <div class="qr-box">
+              <img id="bip49-qr" alt="BIP49 address QR code" hidden>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div id="derivation-bip84" class="tab-panel">
-        <h4>BIP84</h4>
-        <div class="result-grid">
-          <p><strong>Path:</strong> <span id="bip84-path" class="mono">-</span></p>
-          <p><strong>Address:</strong> <span id="bip84-address" class="mono">-</span></p>
-          <div class="qr-box">
-            <img id="bip84-qr" alt="BIP84 address QR code" hidden>
+        <div id="derivation-bip84" class="tab-panel">
+          <h4>BIP84</h4>
+          <div class="result-grid">
+            <p><strong>Path:</strong> <span id="bip84-path" class="mono">-</span></p>
+            <p><strong>Address:</strong> <span id="bip84-address" class="mono">-</span></p>
+            <div class="qr-box">
+              <img id="bip84-qr" alt="BIP84 address QR code" hidden>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
   </main>
 
   <script type="module" src="./app.js"></script>

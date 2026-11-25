@@ -1,0 +1,17 @@
+{
+ "file": "libjade-1.0.40-jade_v2.so",
+ "board": "jade-v2",
+ "display": "v2",
+ "resolution": "320x170",
+ "jade_version": "1.0.40",
+ "ci": false,
+ "build_type": "Debug",
+ "options": {
+  "log": true,
+  "camera": true,
+  "coverage": false,
+  "selfcheck": null
+ },
+ "esp_idf": "v5.5.5",
+ "built": "2026-11-25T00:17:55+0100"
+}

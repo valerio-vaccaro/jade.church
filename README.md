@@ -312,10 +312,10 @@ regenerated automatically, so update them by hand when the submodule or JadeTest
 
 ## Setup
 
-Requirements: Linux or macOS, `cmake`, a C compiler, Python 3.11+, and an
-**ESP-IDF checkout** (only its mbedtls and http_parser sources are compiled natively;
-the ESP toolchain is not needed). Use the version pinned in `jade/Dockerfile`
-(`ESP_IDF_BRANCH`, currently v5.5.5). The cross-platform Python runtime dependencies
+Running needs only Linux or macOS, Python 3.11+ and a firmware binary in `firmware/`
+(prebuilt ones are included). `./run.sh` never builds firmware. Building one (see
+[Firmware builds](#firmware-builds)) also needs `cmake`, a C compiler and an
+**ESP-IDF checkout**. The cross-platform Python runtime dependencies
 are pinned in the repository root's `requirements.txt`.
 
 Create a virtual environment and install the dependencies before starting the server:
@@ -337,7 +337,6 @@ Install those optional packages in the same environment with
 ```sh
 git clone --recurse-submodules <this repo> jade-web
 cd jade-web
-export IDF_PATH=~/esp/esp-idf      # default if unset
 ./run.sh
 ```
 
@@ -346,7 +345,11 @@ then open <http://localhost:8642/>.
 ### Firmware builds
 
 `scripts/build_libjade.sh` builds libjade (the Jade firmware as a native library) from
-the `jade` submodule. It compiles each variant out of tree in `build/<variant>/`, so
+the `jade` submodule. It needs `cmake`, a C compiler and an ESP-IDF checkout in
+`IDF_PATH` (default `~/esp/esp-idf`; only its mbedtls and http_parser sources are
+compiled natively, the ESP toolchain is not needed), at the version pinned in
+`jade/Dockerfile` (`ESP_IDF_BRANCH`, currently v5.5.5).
+It compiles each variant out of tree in `build/<variant>/`, so
 the submodule stays clean. It then installs the binary in `firmware/`, named after
 everything that defines it, next to a `.json` describing the build:
 
@@ -395,9 +398,8 @@ goes, without building it. `--list` lists the binaries already built. See
 - Switching is refused while a flow is running. Sanitize builds need `libasan`
   preloaded, so start those directly (see the error message).
 
-`./run.sh` starts the default, building one only if `firmware/` is empty.
-`./run.sh --lib firmware/<file>` starts a specific binary. With
-`BUILD_ARGS="<options>" ./run.sh` it uses that variant, building it if missing.
+`./run.sh` starts the default and `./run.sh --lib firmware/<file>` a specific binary.
+It never builds: if `firmware/` is empty it stops and points to `scripts/build_libjade.sh`.
 
 The build also fetches the `espressif/cbor` component (tinycbor) that the native build
 needs, at the version pinned in Jade's `dependencies.lock`, from the Espressif
@@ -410,11 +412,8 @@ component registry.
 ./run.sh --port 9000 --bridge-port 30121 --log-level INFO
 ./run.sh --nvs-file none           # don't persist storage
 ./run.sh --bridge-port -1          # no TCP port
-./run.sh --rebuild                 # rebuild the firmware (BUILD_ARGS variant) and run it
-BUILD_ARGS="Release --display v1" ./run.sh --rebuild   # v1 = 240x135 screen
-BUILD_ARGS="--ci" ./run.sh --rebuild                    # firmware auto-confirms prompts
 ./run.sh --lib firmware/libjade-…-jade_v1.so            # run a specific firmware binary
-scripts/build_libjade.sh --display v1 --ci --type Release   # build another variant
+scripts/build_libjade.sh --display v1 --ci --type Release   # build a variant (needs ESP-IDF)
 scripts/build_libjade.sh --list                         # the binaries in firmware/
 ```
 
@@ -479,7 +478,8 @@ either one on a shared network.
 
 ```sh
 git -C jade pull origin master && git submodule update --init --recursive
-./run.sh --rebuild
+scripts/build_libjade.sh                   # build the new firmware (needs ESP-IDF)
+./run.sh
 ```
 
 ## License

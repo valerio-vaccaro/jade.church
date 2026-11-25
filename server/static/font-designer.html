@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>jade.church · font designer</title>
+<meta name="description" content="View and edit the bitmap fonts of the Blockstream Jade firmware: every glyph in a table, pixel editor, and download of the edited C source.">
+<link rel="canonical" href="https://jade.church/font-designer.html">
+<meta name="theme-color" content="#151a1f">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="jade.church">
+<meta property="og:title" content="jade.church · font designer">
+<meta property="og:description" content="View and edit the bitmap fonts of the Blockstream Jade firmware: every glyph in a table, pixel editor, and download of the edited C source.">
+<meta property="og:url" content="https://jade.church/font-designer.html">
+<meta property="og:image" content="https://jade.church/icon-512.png">
+<meta name="twitter:card" content="summary">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <div class="brand-nav">
+    <h1>jade.church</h1>
+    <nav class="top-nav" aria-label="Tools">
+      <a href="/">libjade emulator</a>
+      <a href="/font-designer.html" class="active" aria-current="page">font designer</a>
+    </nav>
+  </div>
+</header>
+
+<div class="fd-page">
+  <section class="card fd-toolbar">
+    <label>Font
+      <select id="fd-font" aria-label="Font file in jade/main/fonts"><option value="">loading…</option></select>
+    </label>
+    <button type="button" id="fd-open">Open file…</button>
+    <input type="file" id="fd-file" accept=".c,.h,text/plain" hidden>
+    <button type="button" id="fd-reload" disabled>↻ Reload</button>
+    <button type="button" id="fd-download" disabled title="Download the font's .c file">⬇ Download</button>
+    <label>Zoom
+      <select id="fd-zoom" aria-label="Pixel size">
+        <option value="auto">auto</option>
+        <option>1</option><option>2</option><option>3</option><option>4</option>
+        <option>5</option><option>6</option><option>8</option><option>10</option>
+      </select>
+    </label>
+    <label class="fd-check"><input type="checkbox" id="fd-grid"> pixel grid</label>
+    <label class="fd-check"><input type="checkbox" id="fd-box" checked> glyph box</label>
+    <span id="fd-dir" class="muted small"></span>
+  </section>
+
+  <section class="card fd-info" id="fd-info" hidden>
+    <h2 id="fd-title"></h2>
+    <div id="fd-meta" class="fd-meta"></div>
+    <div id="fd-base" class="fd-base"></div>
+    <div id="fd-warn" class="fd-warn" hidden></div>
+  </section>
+
+  <section id="fd-table" class="fd-table" aria-label="Glyph table"></section>
+</div>
+
+<dialog id="fd-editor" class="fd-editor" aria-labelledby="fd-ed-title">
+  <div class="fd-ed-head">
+    <h2 id="fd-ed-title"></h2>
+    <button type="button" id="fd-ed-close" class="link" aria-label="Close">✕</button>
+  </div>
+  <div id="fd-ed-meta" class="fd-meta"></div>
+  <div class="fd-ed-body">
+    <canvas id="fd-ed-canvas" aria-label="Glyph pixels: click to toggle, drag to paint"></canvas>
+    <div class="fd-ed-side">
+      <div class="muted small">Actual size</div>
+      <canvas id="fd-ed-small1"></canvas>
+      <div class="muted small">2×</div>
+      <canvas id="fd-ed-small2"></canvas>
+    </div>
+  </div>
+  <p class="muted small">Click a pixel to toggle it, drag to paint. Only the glyph's bitmap box (outlined) is stored in the font.</p>
+  <div class="fd-ed-actions">
+    <button type="button" id="fd-ed-prev" title="Previous glyph (←)">◀ Prev</button>
+    <button type="button" id="fd-ed-next" title="Next glyph (→)">Next ▶</button>
+    <span class="fd-ed-spacer"></span>
+    <button type="button" id="fd-ed-invert">Invert</button>
+    <button type="button" id="fd-ed-clear">Clear</button>
+    <button type="button" id="fd-ed-revert" title="Undo every change to this glyph">Revert glyph</button>
+  </div>
+</dialog>
+
+<footer class="site-footer">
+  <span>© 2026 Valerio Vaccaro</span>
+  <a href="https://opensource.org/license/mit/" target="_blank" rel="noopener">MIT License</a>
+</footer>
+
+<script src="/font-designer.js"></script>
+</body>
+</html>

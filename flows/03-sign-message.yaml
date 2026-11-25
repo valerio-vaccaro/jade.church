@@ -1,0 +1,35 @@
+# Self-contained: power-cycle, load the test wallet, sign a message by
+# navigating the confirmation screen, then verify the signature format.
+name: sign-message
+settle: true
+---
+- restart
+- exec:
+    method: debug_set_mnemonic
+    params:
+      mnemonic: >-
+        fish inner face ginger orchard permit useful method fence kidney chuckle
+        party favorite sunset draw limb science crane oval letter slot invite
+        sadness banana
+    async: true
+    as: setup
+- waitForChange
+- confirm                       # "Warning: debug wallet" -> Continue
+- await: setup
+
+- exec:
+    method: sign_message
+    params:
+      path: [0x80000054, 0x80000001, 0x80000000, 0, 0]
+      message: hello from a jade-web flow
+    async: true                 # blocks until confirmed on the device
+    as: sig
+- waitForChange                 # Sign Message screen, "←" selected
+- screenshot: review
+- right                         # select "✓"
+- screenshot: confirm-selected
+- confirm
+- await: {name: sig, timeout: 10000}
+- log: "signature: ${sig}"
+- expect: {var: sig, matches: "^[A-Za-z0-9+/]{87}=$"}   # base64, 65 bytes
+- screenshot: done

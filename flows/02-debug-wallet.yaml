@@ -1,0 +1,23 @@
+# Load the well-known test mnemonic (debug builds only), confirm on the device,
+# then check the derived xpub.
+name: debug-wallet
+---
+- exec:
+    method: debug_set_mnemonic
+    params:
+      mnemonic: >-
+        fish inner face ginger orchard permit useful method fence kidney chuckle
+        party favorite sunset draw limb science crane oval letter slot invite
+        sadness banana
+    async: true          # it waits for "Continue" on the device
+    as: setup
+- waitForChange          # "Warning: debug wallet"
+- screenshot: debug-warning
+- confirm
+- await: setup
+- exec:
+    method: get_xpub
+    params: {network: testnet, path: [0x80000054, 0x80000001, 0x80000000]}
+    as: xpub
+- log: "account xpub: ${xpub}"
+- expect: {var: xpub, startsWith: tpubDCj4DJ2igAAq}

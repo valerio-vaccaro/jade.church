@@ -1,0 +1,4 @@
+# Runtime dependencies for jade-web on Linux and macOS.
+cbor2==5.9.0
+PyYAML==6.0.2
+wallycore==1.5.3

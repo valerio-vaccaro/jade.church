@@ -1,0 +1,7 @@
+# jade.church: the pages are public; the API, live device data and run results are not content.
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /screenshots/
+
+Sitemap: https://jade.church/sitemap.xml

@@ -1,0 +1,10 @@
+# Walk the home screen carousel and capture each page.
+name: home-screens
+---
+- screenshot: home
+- right
+- screenshot: page-2
+- right
+- screenshot: page-3
+- left: 2
+- screenshot: back-home

@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>jade.church · libjade emulator</title>
+<meta name="description" content="Run the Blockstream Jade hardware wallet firmware (libjade) in your browser: emulated screen and buttons, RPC console and automated test flows.">
+<link rel="canonical" href="https://jade.church/">
+<meta name="theme-color" content="#151a1f">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="jade.church">
+<meta property="og:title" content="jade.church · libjade emulator">
+<meta property="og:description" content="Run the Blockstream Jade hardware wallet firmware (libjade) in your browser: emulated screen and buttons, RPC console and automated test flows.">
+<meta property="og:url" content="https://jade.church/">
+<meta property="og:image" content="https://jade.church/icon-512.png">
+<meta name="twitter:card" content="summary">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <div class="brand-nav">
+    <h1>jade.church</h1>
+    <nav class="top-nav" aria-label="Tools">
+      <a href="/" class="active" aria-current="page">libjade emulator</a>
+      <a href="/font-designer.html">font designer</a>
+    </nav>
+  </div>
+  <div class="header-statuses">
+    <div id="top-run-status" class="pill run-summary">Idle</div>
+    <div id="conn" class="pill">connecting…</div>
+  </div>
+</header>
+
+<main>
+  <section class="device-col">
+    <div id="firmware-name-label" class="firmware-name-label">firmware …</div>
+    <div class="device" id="device" tabindex="0" aria-label="Jade screen. Use arrow keys and Enter.">
+      <canvas id="screen" width="320" height="170"></canvas>
+    </div>
+    <div class="buttons">
+      <button data-ev="left" title="Left / Up arrow">◀</button>
+      <button data-ev="click" class="select" title="Enter / Space">●</button>
+      <button data-ev="right" title="Right / Down arrow">▶</button>
+    </div>
+    <p class="hint">Click the screen, then use <kbd>←</kbd> <kbd>→</kbd> <kbd>Enter</kbd>, <kbd>S</kbd> to screenshot.</p>
+
+    <div class="card activity">
+        <h2>Activity
+          <span class="log-tools">
+            <select id="log-level" aria-label="Firmware log level" title="Firmware log level (changed live)">
+              <option>VERBOSE</option><option>DEBUG</option><option>INFO</option><option>WARNING</option><option>ERROR</option><option>NONE</option>
+            </select>
+            <a class="link" id="log-download" href="/api/logs" download title="Download the whole log (firmware, device and jade.church messages) as text">download</a>
+            <button id="log-clear" class="link">clear</button>
+          </span>
+        </h2>
+        <div class="run-status" id="run-status" role="status" aria-live="polite">
+          <span class="rs-dot"></span><span class="rs-text" id="run-status-text">idle</span>
+          <button id="run-status-stop" class="small-btn danger" hidden title="Stop the running flow / suite">■ Stop</button>
+        </div>
+        <pre id="log"></pre>
+      </div>
+
+    <div class="card">
+      <h2>Camera</h2>
+      <p class="muted">Feeds 320×240 grayscale frames to the firmware's QR scanner.</p>
+      <div class="row">
+        <button id="cam-live">Use webcam</button>
+        <label class="btn">Image file…<input id="cam-file" type="file" accept="image/*" hidden></label>
+        <button id="cam-stop" disabled>Stop</button>
+      </div>
+      <p class="muted small">You can also paste an image (Ctrl+V) anywhere on the page.</p>
+      <canvas id="cam-preview" width="320" height="240"></canvas>
+      <video id="cam-video" playsinline muted hidden></video>
+    </div>
+
+    <div class="card">
+      <h2>Device</h2>
+      <div class="row fw-row">
+        <label class="inline-label fw-label" for="fw-select">Firmware</label>
+        <select id="fw-select" title="Firmware build to emulate (from firmware/)"></select>
+      </div>
+      <div class="row">
+        <label class="inline-label">Scale
+          <select id="scale"><option>1</option><option selected>1.5</option><option>2</option><option>3</option></select>
+        </label>
+        <button id="screenshot" title="Save the screen as PNG at the current scale (S)">📷 Screenshot</button>
+        <button id="restart" class="danger" title="Restart the firmware">Power-cycle</button>
+        <button id="nvs-save">Save storage</button>
+        <a class="btn" href="/api/nvs" download="nvs_flash.bin">Download NVS</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="side-col">
+    <nav class="tabs" role="tablist" aria-label="Panels">
+      <button role="tab" id="tabbtn-flow" aria-controls="tab-flow" data-tab="flow">Flow</button>
+      <button role="tab" id="tabbtn-results" aria-controls="tab-results" data-tab="results">Results <span class="tab-badge" id="results-badge"></span></button>
+      <button role="tab" id="tabbtn-cmds" aria-controls="tab-cmds" data-tab="cmds">Flow commands</button>
+      <button role="tab" id="tabbtn-msgs" aria-controls="tab-msgs" data-tab="msgs">Jade messages</button>
+      <button role="tab" id="tabbtn-rpc" aria-controls="tab-rpc" data-tab="rpc">RPC console</button>
+      <button role="tab" id="tabbtn-config" aria-controls="tab-config" data-tab="config">Config</button>
+    </nav>
+
+    <div class="tabpanel" role="tabpanel" id="tab-flow" aria-labelledby="tabbtn-flow">
+      <div class="card flow">
+        <h2>Flow <span class="flow-status" id="flow-status"></span></h2>
+        <div class="row">
+          <select id="flow-examples" aria-label="Open an example flow"><option value="">Examples…</option></select>
+          <button id="flow-new" title="New empty flow in a new tab">New</button>
+          <label class="btn">Open…<input id="flow-file" type="file" accept=".yaml,.yml,text/yaml" hidden></label>
+          <button id="flow-save" title="Download the selected tab as a .yaml file">Save</button>
+          <span class="spacer"></span>
+        </div>
+        <div class="row">
+          <button id="flow-run" class="primary" title="Run the flow of the selected tab (Ctrl+Enter)">▶ Run</button>
+          <button id="flow-step" title="Run step by step (F10): starts paused at the first step; each click runs the highlighted step">⏯ Step</button>
+          <button id="flow-continue" disabled title="Run the remaining steps without pausing (F8)">⏵ Continue</button>
+          <button id="flow-stop" disabled>■ Stop</button>
+          <button id="flow-check" title="Check the syntax of the selected tab">Check</button>
+        </div>
+        <div class="row">
+          <button id="suite-run" title="Run every flow in flows/ (examples and jade-tests/), one after the other">⏵⏵ Run all flows</button>
+        </div>
+        <div class="flow-tabs" id="flow-tabs" role="tablist" aria-label="Open flows"></div>
+        <div class="flow-empty" id="flow-empty" hidden>
+          No flow open. Pick one from <b>Examples…</b>, start a <b>New</b> one, or <b>Open…</b> a
+          <code>.yaml</code> file. <b>Run all flows</b> runs every flow in <code>flows/</code>.
+        </div>
+        <div class="editor" id="flow-editor">
+          <div class="gutter" id="flow-gutter" aria-hidden="true"></div>
+          <div class="code">
+            <pre class="hl" id="flow-hl" aria-hidden="true"></pre>
+            <div class="cur-line" id="flow-curline" hidden></div>
+            <textarea id="flow-src" spellcheck="false" wrap="off" autocapitalize="off" autocomplete="off"
+                      aria-label="Flow YAML" aria-autocomplete="list" aria-controls="flow-suggest"></textarea>
+            <div class="suggest" id="flow-suggest" role="listbox" aria-label="Suggestions" hidden></div>
+          </div>
+        </div>
+        <div class="lint" id="flow-lint" aria-live="polite"></div>
+        <div id="flow-out"></div>
+      </div>
+
+    </div>
+
+    <div class="tabpanel" role="tabpanel" id="tab-results" aria-labelledby="tabbtn-results" hidden>
+      <div class="card">
+        <h2>Run history <span class="count" id="runs-summary"></span></h2>
+        <div class="row">
+          <label class="chk"><input type="checkbox" id="runs-select-all"> select all</label>
+          <button id="runs-delete-selected" disabled>Delete selected</button>
+          <button id="runs-delete-all" class="danger">Delete all</button>
+          <button id="runs-export-selected" disabled title="Download the selected runs as a zipped HTML report with their screenshots">Export selected</button>
+          <button id="runs-export-all" title="Download every run as a zipped HTML report with their screenshots">Export all</button>
+          <span class="spacer"></span>
+          <select id="runs-filter" aria-label="Filter runs">
+            <option value="">all runs</option><option value="pending">pending only</option><option value="failed">failed only</option><option value="cancelled">cancelled only</option><option value="passed">passed only</option><option value="fwerrors">with firmware errors</option>
+          </select>
+          <button id="runs-refresh" title="Reload">↻</button>
+        </div>
+        <div id="runs-list"></div>
+      </div>
+    </div>
+
+    <div class="tabpanel" role="tabpanel" id="tab-cmds" aria-labelledby="tabbtn-cmds" hidden>
+      <div class="card">
+        <h2>Flow commands</h2>
+        <p class="muted">Steps for the Flow editor. <b>Insert</b> adds the example at the cursor.</p>
+        <div id="ref-commands"></div>
+      </div>
+    </div>
+
+    <div class="tabpanel" role="tabpanel" id="tab-msgs" aria-labelledby="tabbtn-msgs" hidden>
+      <div class="card">
+        <h2>Jade messages <span class="count" id="ref-count"></span></h2>
+        <p class="muted">Generated from the firmware in the <code>jade</code> submodule
+          (dispatcher + <code>docs/index.rst</code>). Example params come from the docs: replace
+          <code>&lt;placeholders&gt;</code> before sending; bytes are written <code>"hex:…"</code>.</p>
+        <div class="row">
+          <input id="ref-search" type="search" placeholder="filter, e.g. sign, xpub, blinding" autocomplete="off">
+        </div>
+        <div class="row chips" id="ref-groups"></div>
+        <div id="ref-methods"></div>
+      </div>
+    </div>
+
+    <div class="tabpanel" role="tabpanel" id="tab-rpc" aria-labelledby="tabbtn-rpc" hidden>
+      <div class="card console">
+        <h2>RPC console</h2>
+        <form id="rpc-form">
+          <div class="row">
+            <input id="rpc-method" placeholder="method, e.g. get_version_info" autocomplete="off" list="methods" required>
+            <button type="submit" id="rpc-send">Send</button>
+          </div>
+          <textarea id="rpc-params" rows="4" spellcheck="false" placeholder='params as JSON (optional) – bytes as "hex:…"'></textarea>
+        </form>
+        <div class="row presets" id="presets"></div>
+        <pre id="rpc-out"></pre>
+      </div>
+
+    </div>
+
+    <div class="tabpanel" role="tabpanel" id="tab-config" aria-labelledby="tabbtn-config" hidden>
+      <div class="card">
+        <h2>Configuration</h2>
+        <dl class="kv" id="config-info"></dl>
+      </div>
+      <div class="card">
+        <h2>CBOR-RPC port</h2>
+        <div id="bridge"></div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <span>© 2026 Valerio Vaccaro</span>
+  <a href="https://opensource.org/license/mit/" target="_blank" rel="noopener">MIT License</a>
+  <span id="app-version">version …</span>
+</footer>
+
+<datalist id="methods">
+  <option>get_version_info</option><option>ping</option><option>auth_user</option>
+  <option>logout</option><option>get_xpub</option><option>get_receive_address</option>
+  <option>sign_message</option><option>debug_set_mnemonic</option><option>debug_clean_reset</option>
+  <option>set_epoch</option><option>get_registered_multisigs</option><option>get_registered_descriptors</option>
+</datalist>
+
+<script src="/app.js"></script>
+</body>
+</html>

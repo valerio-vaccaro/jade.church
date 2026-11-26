@@ -436,13 +436,15 @@ function showBase() {
   }
   const j = jadeInfo;
   const ver = j.tags.length ? `tag ${j.tags.join(', ')}` : `no tag on this commit (${j.describe})`;
-  box.append(el('div', 'fd-source-path', `${fontsDir}/${source.file}`), 'Branch ' + (j.branch || 'detached HEAD') + ' · commit ');
+  const locallyChanged = j.modified.includes(source.file) || j.untracked.includes(source.file);
+  box.append(el('div', 'fd-source-path', `${fontsDir}/${source.file}`),
+    `Branch ${j.branch || 'detached HEAD'} · last commit `);
   const c = el('code', null, j.short);
   c.title = `${j.commit}\n${j.subject}`;
-  box.append(c, ` · ${ver}`,
+  box.append(c, ` · ${ver}${locallyChanged ? ' · local modifications' : ''}`,
     el('div', 'fd-source-subject', `${j.date} · ${j.subject}`));
   const name = source.file;
-  if (j.modified.includes(name) || j.untracked.includes(name)) {
+  if (locallyChanged) {
     box.classList.add('warn');
     box.append(el('div', 'fd-source-warning', j.untracked.includes(name)
       ? '⚠ this file is not in Jade\'s git history (new, untracked file)'

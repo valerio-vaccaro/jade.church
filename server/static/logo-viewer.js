@@ -18,11 +18,13 @@ function showRevision(file) {
   warning.textContent = '';
   if (!jadeSource) return;
   const tag = jadeSource.tags?.length ? ` · tag ${jadeSource.tags.join(', ')}` : '';
-  revision.textContent = `Branch ${jadeSource.branch || 'unknown'} · commit ${jadeSource.short}${tag}`;
+  const locallyChanged = jadeSource.modified?.includes(file) || jadeSource.untracked?.includes(file);
+  revision.textContent = `Branch ${jadeSource.branch || 'unknown'} · last commit ${jadeSource.short}${tag}` +
+    (locallyChanged ? ' · local modifications' : '');
   revision.title = `${jadeSource.commit}\n${jadeSource.subject || ''}`;
   detail.textContent = `${jadeSource.date || ''} · ${jadeSource.subject || ''}`;
   detail.title = jadeSource.commit;
-  if (jadeSource.modified?.includes(file) || jadeSource.untracked?.includes(file)) {
+  if (locallyChanged) {
     warning.hidden = false;
     warning.textContent = jadeSource.untracked.includes(file)
       ? 'This logo file is untracked in the Jade checkout.'

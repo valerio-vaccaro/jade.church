@@ -80,7 +80,7 @@ def fonts_source(source_dir=FONTS_DIR):
 
 
 def project_version():
-    """Return the exact tag for a clean tagged checkout, otherwise the short commit id."""
+    """Return the last commit's exact tag when tagged, otherwise its short ID."""
     import subprocess
 
     def git(*args):
@@ -89,12 +89,11 @@ def project_version():
 
     try:
         commit = git('rev-parse', '--short', 'HEAD')
-        if git('status', '--porcelain', '--untracked-files=normal'):
-            return commit
         try:
-            return git('describe', '--tags', '--exact-match', 'HEAD')
+            version = git('describe', '--tags', '--exact-match', 'HEAD')
         except subprocess.CalledProcessError:
-            return commit
+            version = commit
+        return version
     except (OSError, subprocess.CalledProcessError):
         return 'uncommitted'
 

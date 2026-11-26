@@ -351,6 +351,7 @@ for (const [label, method, params] of PRESETS) {
 async function loadInfo() {
   const info = await api('/api/info');
   $('#app-version').textContent = `version ${info.version || '?'}`;
+  $('#app-version').title = 'Exact tag or commit ID of this checkout';
   const firmwareName = info.firmware?.file || info.lib || 'unknown firmware';
   const firmwareLabel = $('#firmware-name-label');
   firmwareLabel.textContent = firmwareName;

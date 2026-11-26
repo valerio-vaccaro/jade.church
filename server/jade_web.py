@@ -41,7 +41,8 @@ WEB_DIR = os.path.join(ROOT, 'server', 'static')   # the browser UI, served as-i
 FLOWS_DIR = os.path.join(ROOT, 'flows')
 JADE_DIR = os.path.join(ROOT, 'jade')
 FONTS_DIR = os.path.join(JADE_DIR, 'main', 'fonts')   # firmware fonts, shown by the font designer
-LOGOS_DIR = os.path.join(JADE_DIR, 'logo')            # compressed firmware logos, shown by logo viewer
+LOGOS_DIR = os.path.join(JADE_DIR, 'logo')            # compressed firmware logos, shown by logo designer
+BUTTON_EVENTS_H = os.path.join(JADE_DIR, 'main', 'button_events.h')  # BTN_ ids, offered by the screen designer
 CAMERA_FRAME_SIZE = 320 * 240  # CAMERA_IMAGE_WIDTH x CAMERA_IMAGE_HEIGHT, 8-bit grayscale
 MAX_BODY = 4 * 1024 * 1024
 STATIC_TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -140,6 +141,20 @@ def to_json(value):
     if isinstance(value, (list, tuple)):
         return [to_json(v) for v in value]
     return value
+
+
+def button_events(path=BUTTON_EVENTS_H):
+    """The BTN_* event ids of the firmware's button_events.h enum, in declaration order."""
+    try:
+        with open(path, encoding='utf-8') as f:
+            src = re.sub(r'//[^\n]*|/\*.*?\*/', '', f.read(), flags=re.S)
+    except OSError:
+        return []
+    names = []
+    for name in re.findall(r'\b(BTN_[A-Z0-9_]+)\b\s*(?:=[^,}]*)?[,}]', src):
+        if name not in names:
+            names.append(name)
+    return names
 
 
 def read_project_file(rel):
@@ -831,6 +846,8 @@ def make_handler(app):
                     if os.path.isdir(LOGOS_DIR) else []
                 return self._send_json({'dir': os.path.relpath(LOGOS_DIR, ROOT), 'logos': names,
                                         'jade': fonts_source(LOGOS_DIR)})
+            if path == '/api/button-events':
+                return self._send_json({'events': button_events()})
             if path.startswith('/api/logos/'):
                 return self._file(LOGOS_DIR, path[len('/api/logos/'):], 'application/octet-stream')
             if path.startswith('/screenshots/'):
@@ -983,6 +1000,8 @@ def make_handler(app):
         def _static(self, path):
             if path == '/':
                 path = '/index.html'
+            if path == '/logo-viewer.html':          # old name of the logo designer
+                return self._send(HTTPStatus.MOVED_PERMANENTLY, b'', 'text/plain', {'Location': '/logo-designer.html'})
             full = os.path.realpath(os.path.join(WEB_DIR, path.lstrip('/')))
             if not full.startswith(WEB_DIR + os.sep) or not os.path.isfile(full):
                 # a page for people and crawlers (status 404, so it is never indexed)

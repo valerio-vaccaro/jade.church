@@ -19,8 +19,8 @@ browser is showing.
 ## Layout of the page
 
 The top bar switches between the tools: **libjade emulator** (this page),
-**font designer** (`/font-designer.html`), **logo viewer** (`/logo-viewer.html`),
-and **about** (`/about.html`). The font designer opens a font from
+**font designer** (`/font-designer.html`), **logo designer** (`/logo-designer.html`),
+**screen designer** (`/screen-designer.html`) and **about** (`/about.html`). The font designer opens a font from
 `jade/main/fonts/` (or any font `.c` file from disk, with **Open file…**) and draws every
 glyph in a table, decoded the way the firmware's `display.c` does: fixed-width fonts
 (`[width, height, first, count]` header) and proportional ones (per-glyph offsets and
@@ -39,13 +39,27 @@ For fixed-width fonts, a complete glyph-count mismatch can be repaired in the he
 and a blank character can be appended. Changes stay in the browser until you download
 the edited font file.
 
-The logo viewer lists the `.bin.gz` images in `jade/logo/`, decodes their compressed
+The logo designer (formerly the logo viewer) lists the `.bin.gz` images in `jade/logo/`, decodes their compressed
 RGB565 pixels for preview and editing, and shows the Jade branch, commit, tag and date
 behind those assets. Create a blank image with custom dimensions, zoom up to 32×, open a
 `.bin.gz` file from disk, pick a color from the image palette or use
 a custom color, and click the preview to open the pixel editor. Paint there and download
 the result as a new `.bin.gz` file. **Reload** restores the selected source image. Locally
 changed logo files are identified in the picker.
+
+The screen designer composes a screen with the firmware's gui library (`jade/main/gui.h`).
+Pick the display (Jade v1 240×135, Jade v2 320×170, or a custom size), with or without the
+status bar, then add nodes from the library: the `gui.h` nodes (vsplit, hsplit, fill, button,
+text, picture, qrguide) or ready-made blocks built the way the `ui.h` helpers build them (title
+bar, button rows, menu, carousel, progress bar…), or start from a whole screen. Select a node
+on the preview or in the node tree to edit its split values, colours (the `TFT_*` and
+Blockstream constants, the theme highlight, or any RGB565 colour), font, alignment, margins,
+padding and borders. The preview is drawn pixel by pixel as `gui.c` and `display.c` do, with
+the real fonts from `jade/main/fonts/` and logos from `jade/logo/`, including the highlight
+theme and the selected button; it warns about things the firmware would not draw. Below, the
+page shows the C function that builds the same activity (copy or download it), plus a guide to
+the nodes and how they combine. Designs are kept in the browser and can be saved and reopened
+as `.json`.
 
 On the left are:
 - the device screen and its buttons;

@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>jade.church · screen designer</title>
+<meta name="description" content="Compose Blockstream Jade screens with the firmware's gui library and get the C code that builds them.">
+<meta name="theme-color" content="#151a1f">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <div class="brand-nav">
+    <h1>jade.church</h1>
+    <nav class="top-nav" aria-label="Tools">
+      <a href="/">libjade emulator</a>
+      <a href="/font-designer.html">font designer</a>
+      <a href="/logo-designer.html">logo designer</a>
+      <a href="/screen-designer.html" class="active" aria-current="page">screen designer</a>
+      <a href="/about.html">about</a>
+    </nav>
+  </div>
+</header>
+
+<main class="fd-page sd-page">
+  <section class="card sd-settings">
+    <div class="fd-toolbar">
+      <label for="sd-device">Display</label>
+      <select id="sd-device">
+        <option value="v1">Jade v1 · 240 × 135</option>
+        <option value="v2">Jade v2 · 320 × 170</option>
+        <option value="custom">Custom size…</option>
+      </select>
+      <span id="sd-custom-size" class="sd-inline" hidden>
+        <input id="sd-width" type="number" min="16" max="640" value="240" aria-label="Display width"> ×
+        <input id="sd-height" type="number" min="16" max="640" value="135" aria-label="Display height">
+      </span>
+      <label class="fd-check"><input type="checkbox" id="sd-statusbar"> Status bar</label>
+      <input id="sd-title" type="text" placeholder="status bar title" aria-label="Status bar title" hidden>
+      <label for="sd-theme">Highlight</label>
+      <select id="sd-theme">
+        <option value="0">Jade green</option><option value="1">Orange</option><option value="2">Blue</option>
+        <option value="3">Dark grey</option><option value="4">Light grey</option>
+      </select>
+      <label for="sd-qr">QR background</label>
+      <select id="sd-qr"></select>
+      <label class="fd-check"><input type="checkbox" id="sd-show-sel" checked> Show selection</label>
+      <label for="sd-zoom">Zoom</label>
+      <select id="sd-zoom"><option value="auto" selected>fit</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
+    </div>
+    <div class="fd-toolbar sd-actions">
+      <label for="sd-preset">Start from</label>
+      <select id="sd-preset"><option value="">— a ready-made screen —</option></select>
+      <button type="button" id="sd-undo" title="Undo (Ctrl+Z)">↶ Undo</button>
+      <button type="button" id="sd-redo" title="Redo (Ctrl+Shift+Z)">↷ Redo</button>
+      <button type="button" id="sd-export">⬇ Save design (.json)</button>
+      <button type="button" id="sd-import">Open design…</button>
+      <input type="file" id="sd-import-file" accept=".json,application/json" hidden>
+      <span id="sd-source" class="muted small"></span>
+    </div>
+  </section>
+
+  <div class="sd-grid">
+    <section class="card sd-library" aria-labelledby="sd-lib-title">
+      <h2 id="sd-lib-title">Library</h2>
+      <p class="muted small">Adds to the selected node: inside it when it has room for a child, otherwise right after it.</p>
+      <h3 class="sd-sub">gui.h nodes</h3>
+      <div id="sd-lib-nodes" class="sd-lib-list"></div>
+      <h3 class="sd-sub">ui.h building blocks</h3>
+      <div id="sd-lib-blocks" class="sd-lib-list"></div>
+    </section>
+
+    <section class="card sd-stage-card" aria-labelledby="sd-stage-title">
+      <h2 id="sd-stage-title">Screen <span id="sd-size" class="muted small"></span></h2>
+      <div class="sd-stage-wrap">
+        <div id="sd-stage" class="sd-stage">
+          <canvas id="sd-canvas" aria-label="Screen preview: click a node to select it"></canvas>
+          <div id="sd-hl-outer" class="sd-hl sd-hl-outer" hidden></div>
+          <div id="sd-hl-inner" class="sd-hl sd-hl-inner" hidden></div>
+        </div>
+      </div>
+      <p id="sd-hover" class="muted small sd-hover">&nbsp;</p>
+      <ul id="sd-warnings" class="sd-warnings"></ul>
+      <h2>Node tree</h2>
+      <div class="sd-tree-tools">
+        <button type="button" id="sd-up" title="Move up (Alt+↑)">↑</button>
+        <button type="button" id="sd-down" title="Move down (Alt+↓)">↓</button>
+        <button type="button" id="sd-dup" title="Duplicate">⧉ Duplicate</button>
+        <button type="button" id="sd-wrap" title="Put the node inside a new fill">⬚ Wrap in fill</button>
+        <button type="button" id="sd-del" title="Delete (Del)">✕ Delete</button>
+      </div>
+      <ul id="sd-tree" class="sd-tree" role="tree" aria-label="Node tree"></ul>
+    </section>
+
+    <section class="card sd-inspector" aria-labelledby="sd-insp-title">
+      <h2 id="sd-insp-title">Properties</h2>
+      <div id="sd-help" class="sd-help"></div>
+      <div id="sd-props"></div>
+    </section>
+  </div>
+
+  <section class="card sd-code-card" aria-labelledby="sd-code-title">
+    <h2 id="sd-code-title">Jade C code
+      <span class="sd-code-tools">
+        <label class="fd-check">function <input id="sd-fn" type="text" value="make_my_screen_activity" spellcheck="false"></label>
+        <button type="button" id="sd-copy">Copy</button>
+        <button type="button" id="sd-download" class="primary">⬇ Download .c</button>
+      </span>
+    </h2>
+    <p class="muted small">Drop it in a file under <code>jade/main/ui/</code> (it includes <code>../ui.h</code>), call the
+      function, then show the activity and wait for a button. The code uses only the calls in <code>gui.h</code>, so the
+      screen renders the same as the preview.</p>
+    <pre id="sd-code" class="sd-code"></pre>
+  </section>
+
+  <section class="card sd-guide" aria-labelledby="sd-guide-title">
+    <h2 id="sd-guide-title">How Jade screens are built</h2>
+    <div class="sd-guide-cols">
+      <div>
+        <h3>Activities and the node tree</h3>
+        <p>A Jade screen is an <b>activity</b> (<code>gui_activity_t</code>): a tree of <b>view nodes</b> under
+          <code>act-&gt;root_node</code>, a black fill that covers the display (below the status bar, if the activity has one).
+          Nothing has an x/y position: each node gets a rectangle from its parent, and splits divide their rectangle among
+          their children. To show the activity call <code>gui_set_current_activity(act)</code>.</p>
+        <h3>The box model</h3>
+        <div class="sd-boxmodel" aria-hidden="true">
+          <div class="bm-margin"><span>margins</span>
+            <div class="bm-border"><span>border</span>
+              <div class="bm-padding"><span>padding</span>
+                <div class="bm-content">content &amp; children</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p>The rectangle is shrunk in this order: <b>margins</b> (<code>gui_set_margins</code>) leave a gap, the
+          <b>border</b> (<code>gui_set_borders</code>) is painted inside the margins on the sides you choose, then
+          <b>padding</b> (<code>gui_set_padding</code>) moves the content in. Fills and buttons paint only the area inside the
+          padding. Margins and padding take one value (all sides), two (top/bottom, left/right) or four (top, right, bottom,
+          left), from 0 to 255.</p>
+      </div>
+      <div>
+        <h3>The nodes</h3>
+        <dl class="sd-dl" id="sd-guide-nodes"></dl>
+      </div>
+      <div>
+        <h3>How they combine</h3>
+        <ul class="sd-recipes">
+          <li><b>Rows and columns</b>: a <i>vsplit</i> stacks children top to bottom, an <i>hsplit</i> puts them side by side.
+            Nest them for grids: a vsplit of hsplits.</li>
+          <li><b>Header + body + footer</b>: <code>vsplit 20 / 55 / 25</code>. Put a title in the first part, the content in the
+            middle and a button row in the last. This is what <code>add_title_bar()</code> and
+            <code>make_show_message_activity()</code> do.</li>
+          <li><b>Buttons with labels</b>: a button paints its background and then its <i>one</i> child. Put a text in it, or a
+            split for icon + text. Text inside a button switches to its selected colour when the button is selected.</li>
+          <li><b>Backgrounds</b>: a fill paints a rectangle and then its one child on top. Use it behind a text you will update
+            (so the old text is cleared), or with <i>highlight</i> to follow the user's theme.</li>
+          <li><b>Spacers</b>: an empty <code>vsplit</code> with one part draws nothing. <code>add_button()</code> uses one for a
+            button slot that has no event.</li>
+          <li><b>Exact sizes</b>: switch a split to <i>absolute</i> for pixel sizes, and use <i>fill remaining</i> for the part
+            that takes what is left.</li>
+          <li><b>Selection</b>: the wheel/joystick moves between active buttons in screen order (top to bottom, then left to
+            right); the first one, or the one marked <i>initial selection</i>, starts selected. A click posts
+            <code>GUI_BUTTON_EVENT</code> with the button's event id, which <code>gui_activity_wait_button()</code> returns.</li>
+        </ul>
+        <h3>Things the firmware does that may surprise you</h3>
+        <ul class="sd-recipes">
+          <li>Fills, buttons and pictures draw only their <b>first</b> child; a split draws at most as many children as it has parts.</li>
+          <li>Relative splits round down (<code>size × value / 100</code>), so a few pixels may stay empty at the end.</li>
+          <li>Text that does not fit wraps at the edge of its area; a line that does not fit vertically is not drawn. A
+            scrolling text is drawn on one line instead.</li>
+          <li>Colour constants are RGB565 with the bytes swapped (<code>TFT_RED</code> is <code>0x00F8</code>); the code
+            below writes custom colours that way.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="sd-toast" class="sd-toast" role="status" hidden></div>
+
+<footer class="site-footer">
+  <span>© 2026 Valerio Vaccaro</span>
+  <a href="https://opensource.org/license/mit/" target="_blank" rel="noopener">MIT License</a>
+</footer>
+<script src="/screen-designer.js"></script>
+</body>
+</html>

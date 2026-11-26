@@ -27,6 +27,7 @@
     <nav class="top-nav" aria-label="Tools">
       <a href="/">libjade emulator</a>
       <a href="/font-designer.html" class="active" aria-current="page">font designer</a>
+      <a href="/logo-viewer.html">logo viewer</a>
       <a href="/about.html">about</a>
     </nav>
   </div>
@@ -51,13 +52,20 @@
     <label class="fd-check"><input type="checkbox" id="fd-grid"> pixel grid</label>
     <label class="fd-check"><input type="checkbox" id="fd-box" checked> glyph box</label>
     <span id="fd-dir" class="muted small"></span>
+    <div class="fd-source" id="fd-source" hidden>
+      <h2>Jade source</h2>
+      <div id="fd-base" class="fd-base"></div>
+    </div>
   </section>
 
   <section class="card fd-info" id="fd-info" hidden>
     <h2 id="fd-title"></h2>
     <div id="fd-meta" class="fd-meta"></div>
-    <div id="fd-base" class="fd-base"></div>
     <div id="fd-warn" class="fd-warn" hidden></div>
+    <div class="fd-repair-actions">
+      <button type="button" id="fd-fix-count" hidden>Fix header count</button>
+      <button type="button" id="fd-add-char" hidden>Add blank character</button>
+    </div>
   </section>
 
   <section id="fd-table" class="fd-table" aria-label="Glyph table"></section>

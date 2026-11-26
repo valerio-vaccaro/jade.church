@@ -41,6 +41,7 @@ WEB_DIR = os.path.join(ROOT, 'server', 'static')   # the browser UI, served as-i
 FLOWS_DIR = os.path.join(ROOT, 'flows')
 JADE_DIR = os.path.join(ROOT, 'jade')
 FONTS_DIR = os.path.join(JADE_DIR, 'main', 'fonts')   # firmware fonts, shown by the font designer
+LOGOS_DIR = os.path.join(JADE_DIR, 'logo')            # compressed firmware logos, shown by logo viewer
 CAMERA_FRAME_SIZE = 320 * 240  # CAMERA_IMAGE_WIDTH x CAMERA_IMAGE_HEIGHT, 8-bit grayscale
 MAX_BODY = 4 * 1024 * 1024
 STATIC_TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -49,9 +50,8 @@ STATIC_TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
                 '.xml': 'application/xml; charset=utf-8', '.webmanifest': 'application/manifest+json'}
 
 
-def fonts_source():
-    """Which Jade the font files come from: commit, tag (if HEAD is tagged), and the font
-    files with local changes, so the font designer can show what it is editing."""
+def fonts_source(source_dir=FONTS_DIR):
+    """Jade revision and local changes for a source asset directory."""
     import subprocess
 
     def git(*args):
@@ -61,12 +61,16 @@ def fonts_source():
         commit, short, date, subject = git('log', '-1', '--format=%H%n%h%n%cs%n%s').split('\n', 3)
     except (OSError, subprocess.SubprocessError, ValueError):
         return None                     # not a git checkout (or git missing)
-    info = {'commit': commit, 'short': short, 'date': date, 'subject': subject,
+    try:
+        branch = git('branch', '--show-current') or 'detached HEAD'
+    except (OSError, subprocess.SubprocessError):
+        branch = 'unknown'
+    info = {'commit': commit, 'short': short, 'date': date, 'subject': subject, 'branch': branch,
             'tags': [], 'describe': None, 'modified': [], 'untracked': []}
     try:
         info['tags'] = git('tag', '--points-at', 'HEAD').split()
         info['describe'] = git('describe', '--tags', '--always')
-        rel = os.path.relpath(FONTS_DIR, JADE_DIR)
+        rel = os.path.relpath(source_dir, JADE_DIR)
         for line in git('status', '--porcelain', '--', rel).splitlines():
             name = os.path.basename(line[3:].strip().strip('"'))
             (info['untracked'] if line.startswith('??') else info['modified']).append(name)
@@ -823,6 +827,13 @@ def make_handler(app):
                                         'jade': fonts_source()})
             if path.startswith('/api/fonts/'):
                 return self._file(FONTS_DIR, path[len('/api/fonts/'):], 'text/plain; charset=utf-8')
+            if path == '/api/logos':
+                names = sorted((f for f in os.listdir(LOGOS_DIR) if f.endswith('.bin.gz')), key=str.lower) \
+                    if os.path.isdir(LOGOS_DIR) else []
+                return self._send_json({'dir': os.path.relpath(LOGOS_DIR, ROOT), 'logos': names,
+                                        'jade': fonts_source(LOGOS_DIR)})
+            if path.startswith('/api/logos/'):
+                return self._file(LOGOS_DIR, path[len('/api/logos/'):], 'application/octet-stream')
             if path.startswith('/screenshots/'):
                 return self._file(app.args.runs_dir, path[len('/screenshots/'):], 'image/png')
             if path == '/api/runs':

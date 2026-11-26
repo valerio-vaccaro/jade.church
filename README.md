@@ -18,8 +18,9 @@ browser is showing.
 
 ## Layout of the page
 
-The top bar switches between the tools: **libjade emulator** (this page) and
-**font designer** (`/font-designer.html`). The font designer opens a font from
+The top bar switches between the tools: **libjade emulator** (this page),
+**font designer** (`/font-designer.html`), **logo viewer** (`/logo-viewer.html`),
+and **about** (`/about.html`). The font designer opens a font from
 `jade/main/fonts/` (or any font `.c` file from disk, with **Open file…**) and draws every
 glyph in a table, decoded the way the firmware's `display.c` does: fixed-width fonts
 (`[width, height, first, count]` header) and proportional ones (per-glyph offsets and
@@ -31,9 +32,16 @@ the glyph's bitmap box can be drawn, so the font's layout never changes. Edited 
 drawn in amber in the table. **Download** saves the `.c` file with the edits: only the
 changed byte values are rewritten, keeping the file's comments, layout and number style.
 **Reload** reads the open file again (it asks first if there are edits not downloaded yet).
-The page shows which Jade the fonts come from: the commit of the `jade/` checkout, its tag
-(when the commit is tagged) and date. Font files that differ from that commit are marked
+The page shows which Jade branch and commit the fonts come from, plus the tag (when the
+commit is tagged) and date. Font files that differ from that commit are marked
 "locally modified" in the list and get a warning when opened.
+For fixed-width fonts, a complete glyph-count mismatch can be repaired in the header,
+and a blank character can be appended. Changes stay in the browser until you download
+the edited font file.
+
+The logo viewer lists the `.bin.gz` images in `jade/logo/`, decodes their compressed
+RGB565 pixels for preview, and shows the Jade branch, commit, tag and date behind those
+assets. Locally changed logo files are identified in the picker.
 
 On the left are:
 - the device screen and its buttons;

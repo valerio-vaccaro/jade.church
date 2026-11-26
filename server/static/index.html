@@ -27,6 +27,7 @@
     <nav class="top-nav" aria-label="Tools">
       <a href="/" class="active" aria-current="page">libjade emulator</a>
       <a href="/font-designer.html">font designer</a>
+      <a href="/logo-viewer.html">logo viewer</a>
       <a href="/about.html">about</a>
     </nav>
   </div>
@@ -60,6 +61,9 @@
             <select id="log-level" aria-label="Firmware log level" title="Firmware log level (changed live)">
               <option>VERBOSE</option><option>DEBUG</option><option>INFO</option><option>WARNING</option><option>ERROR</option><option>NONE</option>
             </select>
+            <label class="chk sound-toggle" title="Play a short sound when a flow or suite finishes">
+              <input id="flow-sound" type="checkbox"> sound
+            </label>
             <a class="link" id="log-download" href="/api/logs" download title="Download the whole log (firmware, device and jade.church messages) as text">download</a>
             <button id="log-clear" class="link">clear</button>
           </span>

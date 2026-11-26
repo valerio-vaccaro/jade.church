@@ -19,6 +19,24 @@ import zipfile
 
 ICONS = {'passed': '✓', 'failed': '✗', 'stopped': '■', 'cancelled': '⊘', 'running': '…', 'error': '✗'}
 
+IMAGE_PREVIEW_SCRIPT = """
+const preview = document.querySelector('.image-preview');
+const previewImage = preview.querySelector('img');
+preview.querySelector('button').addEventListener('click', () => preview.close());
+preview.addEventListener('click', event => {
+  if (event.target === preview || event.target === previewImage) preview.close();
+});
+document.addEventListener('click', event => {
+  const link = event.target.closest('.image-preview-link');
+  if (!link) return;
+  event.preventDefault();
+  preview.querySelector('.image-preview-head span').textContent = link.querySelector('img')?.alt || 'Screenshot';
+  previewImage.src = link.href;
+  previewImage.alt = link.querySelector('img')?.alt || 'Screenshot preview';
+  preview.showModal();
+});
+"""
+
 CSS = """
 :root { --bg:#0f1115; --card:#171a21; --line:#2a2f3a; --fg:#e6e6e6; --muted:#8b93a3;
   --ok:#2fbf71; --bad:#e5534b; --warn:#e3b341;
@@ -57,6 +75,17 @@ tr.exp-failed td:nth-child(n+3) { color: var(--bad); }
 .gallery figure { margin:0; }
 .gallery img { display:block; width: 320px; max-width: 100%; image-rendering: pixelated;
   border:1px solid var(--line); border-radius:4px; background:#000; }
+.gallery a.image-preview-link { cursor: zoom-in; }
+dialog.image-preview { width:min(58vw, 1000px); max-width:calc(100vw - 32px); max-height:84vh;
+  margin:auto; padding:10px; border:1px solid #59636b; border-radius:12px; background:#171c20; color:var(--fg);
+  box-shadow:0 24px 80px #000b; }
+dialog.image-preview::backdrop { background:#050709c9; }
+.image-preview-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px;
+  color:var(--muted); font:11px var(--mono); overflow-wrap:anywhere; }
+.image-preview-head button { border:1px solid var(--line); border-radius:6px; padding:3px 9px;
+  background:var(--card); color:var(--fg); cursor:pointer; }
+.image-preview img { display:block; width:min(50vw, 900px); max-width:calc(100vw - 56px); max-height:50vh;
+  margin:0 auto; object-fit:contain; image-rendering:pixelated; border:1px solid var(--line); background:#000; }
 .gallery figcaption { font-size: 12px; color: var(--muted); font-family: var(--mono); }
 pre.src { font-family: var(--mono); font-size: 12.5px; background: var(--bg); border:1px solid var(--line);
   border-radius:6px; padding: 10px; overflow:auto; max-height: 480px; }
@@ -107,7 +136,7 @@ def _run_section(rec):
         items = []
         for p in paths:
             rel = p if p.startswith(d + '/') else f'{d}/{p}'
-            items.append(f'<figure><a href="{_e(rel)}"><img loading="lazy" src="{_e(rel)}" '
+            items.append(f'<figure><a class="image-preview-link" href="{_e(rel)}"><img loading="lazy" src="{_e(rel)}" '
                          f'alt="{_e(os.path.basename(rel))}"></a><figcaption>{_e(os.path.basename(rel))}</figcaption></figure>')
         return '<div class="gallery">' + ''.join(items) + '</div>'
 
@@ -173,7 +202,13 @@ def build_html(records, title):
 <table><tr><th>status</th><th>flow</th><th>firmware</th><th>started</th><th>s</th><th>steps</th><th>shots</th><th>error</th></tr>
 {''.join(rows)}</table>
 {''.join(_run_section(r) for r in records)}
-</main></body></html>
+</main>
+<dialog class="image-preview" aria-label="Screenshot preview">
+  <div class="image-preview-head"><span></span><button type="button">Close ✕</button></div>
+  <img alt="Screenshot preview">
+</dialog>
+<script>{IMAGE_PREVIEW_SCRIPT}</script>
+</body></html>
 """
 
 

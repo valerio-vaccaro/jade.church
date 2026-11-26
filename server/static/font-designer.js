@@ -32,6 +32,7 @@ function parseCArray(src) {
   const decl = /unsigned\s+char\s+(\w+)\s*\[[^\]]*\]\s*(?:PROGMEM\s*)?=\s*\{/.exec(src);
   if (!decl) throw new Error('no "unsigned char name[] = { … }" array found');
   const bytes = [], comments = [], spans = [];
+  let lastSignificant = null;
   let i = decl.index + decl[0].length;
   const token = /\s+|\/\/[^\n]*|\/\*[\s\S]*?\*\/|0[xX][0-9a-fA-F]+|\d+|,|\}|[^\s,}]+/y;
   for (;;) {
@@ -48,9 +49,12 @@ function parseCArray(src) {
       if (v > 255) throw new Error(`value ${t} does not fit in a byte`);
       bytes.push(v);
       spans.push({ start: m.index, end: token.lastIndex, text: t });
-    } else if (t.trim() && t !== ',') throw new Error(`unexpected "${t}" in the array`);
+      lastSignificant = 'value';
+    } else if (t === ',') lastSignificant = 'comma';
+    else if (t.trim()) throw new Error(`unexpected "${t}" in the array`);
   }
-  return { name: decl[1], bytes, orig: bytes.slice(), spans, comments };
+  return { name: decl[1], bytes, orig: bytes.slice(), spans, comments, closeAt: i - 1,
+           trailingComma: lastSignificant === 'comma', appended: [], addedGlyphs: new Set() };
 }
 
 // ---------------------------------------------------------------- bytes → glyphs
@@ -67,11 +71,16 @@ function decodeFont(arr) {
     // fixed width
     const [w, h, first, count] = b;
     const rowBytes = (w + 7) >> 3, size = rowBytes * h;
+    if (!size) throw new Error('fixed-width font has zero-sized characters');
     const avail = Math.floor((b.length - 4) / size);
-    if (avail < count) warnings.push(`header says ${count} characters, the data holds ${avail}`);
-    if (b.length !== 4 + count * size && avail >= count) {
+    const complete = b.length === 4 + avail * size;
+    if (avail !== count && complete) warnings.push(`header says ${count} characters, the data holds ${avail}`);
+    else if (avail < count) warnings.push(`header says ${count} characters, the data holds ${avail}`);
+    else if (b.length !== 4 + count * size) {
       warnings.push(`${b.length - 4 - count * size} extra byte(s) after the last character`);
     }
+    const repair = avail !== count && complete ? { available: avail } : null;
+    const canAddCharacter = complete && avail < 255 && first + avail <= 255;
     for (let n = 0; n < Math.min(count, avail); n++) {
       const start = 4 + n * size, px = new Uint8Array(w * h);
       for (let y = 0; y < h; y++) {
@@ -82,9 +91,11 @@ function decodeFont(arr) {
       }
       // symbol fonts label each glyph with a trailing comment, after its last byte
       glyphs.push({ code: first + n, w, h, xOff: 0, yOff: 0, adv: w, px, orig: px.slice(),
+                    added: arr.addedGlyphs?.has(n) || false,
                     at: start, packed: false, label: labelAt.get(start + size) ?? null });
     }
-    return { kind: 'fixed', width: w, height: h, first, count, glyphs, warnings, size: b.length, name: arr.name };
+    return { kind: 'fixed', width: w, height: h, first, count, glyphs, warnings, size: b.length,
+             name: arr.name, avail, repair, canAddCharacter };
   }
 
   // proportional
@@ -141,8 +152,9 @@ function zoomFor(cell) {
   return Math.max(1, Math.min(10, Math.floor(64 / Math.max(cell.w, cell.h))));
 }
 
-const isModified = (g) => g.px.some((v, i) => v !== g.orig[i]);
+const isModified = (g) => g.added || g.px.some((v, i) => v !== g.orig[i]);
 const modifiedCount = () => current ? current.font.glyphs.filter(isModified).length : 0;
+const hasByteChanges = () => !!current && current.arr.bytes.some((v, i) => v !== current.arr.orig[i]);
 // edits not downloaded yet (a download counts as saving them)
 const unsaved = () => !!current && current.arr.bytes.join() !== (current.savedBytes ?? current.arr.orig.join());
 
@@ -189,13 +201,27 @@ function render() {
     : [`proportional, height ${font.height}`];
   meta.push(`${font.glyphs.length} glyph(s)`, `${font.size} bytes`);
   const mods = modifiedCount();
-  if (mods) meta.push(unsaved() ? `${mods} modified, not saved yet` : `${mods} modified, saved by download`);
+  if (mods) meta.push(`${mods} modified character${mods === 1 ? '' : 's'}`);
+  if (hasByteChanges()) meta.push(unsaved() ? 'font modified, not downloaded' : 'font modified, downloaded');
   $('#fd-meta').textContent = meta.join(' · ');
   showBase();
   const warn = $('#fd-warn');
   warn.hidden = !font.warnings.length;
   warn.textContent = font.warnings.map((w) => `⚠ ${w}`).join('\n');
-  if (!font.glyphs.length) { table.append(el('div', 'muted', 'This font has no glyphs.')); return; }
+  const fixCount = $('#fd-fix-count');
+  fixCount.hidden = !font.repair;
+  fixCount.textContent = font.repair ? `Fix header count to ${font.repair.available}` : 'Fix header count';
+  const addChar = $('#fd-add-char');
+  addChar.hidden = font.kind !== 'fixed';
+  addChar.disabled = !font.canAddCharacter;
+  addChar.title = font.canAddCharacter
+    ? 'Append one blank character to the data and update the header count'
+    : 'No room to append a complete character to this font';
+  if (!font.glyphs.length) {
+    table.append(el('div', 'muted', 'This font has no glyphs.'));
+    updateButtons();
+    return;
+  }
 
   const cell = cellGeometry(font), z = zoomFor(cell);
   const opts = { grid: $('#fd-grid').checked, box: $('#fd-box').checked };
@@ -253,7 +279,21 @@ function encodeGlyph(g) {
 function buildSource() {
   const { arr } = current;
   let out = source.text;
-  for (let i = arr.bytes.length - 1; i >= 0; i--) {
+  if (arr.appended.length) {
+    const style = arr.spans.at(-1)?.text || '0x00';
+    const format = (value) => {
+      if (!/^0[xX]/.test(style)) return String(value);
+      const digits = value.toString(16).padStart(style.length - 2, '0');
+      return style.slice(0, 2) + (/[a-f]/.test(style.slice(2)) ? digits : digits.toUpperCase());
+    };
+    const charSize = ((current.font.width + 7) >> 3) * current.font.height;
+    const lines = [];
+    for (let i = 0; i < arr.appended.length; i += charSize) {
+      lines.push(`  ${arr.appended.slice(i, i + charSize).map(format).join(', ')}, // added blank character`);
+    }
+    out = out.slice(0, arr.closeAt) + `${arr.trailingComma ? '' : ','}\n${lines.join('\n')}\n` + out.slice(arr.closeAt);
+  }
+  for (let i = arr.orig.length - 1; i >= 0; i--) {
     if (arr.bytes[i] === arr.orig[i]) continue;
     const { start, end, text } = arr.spans[i];
     let t;
@@ -264,6 +304,28 @@ function buildSource() {
     out = out.slice(0, start) + t + out.slice(end);
   }
   return out;
+}
+
+function fixHeaderCount() {
+  if (!current || current.font.kind !== 'fixed' || !current.font.repair) return;
+  current.arr.bytes[3] = current.font.repair.available;
+  current.font = decodeFont(current.arr);
+  render();
+}
+
+function addBlankCharacter() {
+  if (!current || current.font.kind !== 'fixed' || !current.font.canAddCharacter) return;
+  const { font } = current;
+  const rowBytes = (font.width + 7) >> 3;
+  const charSize = rowBytes * font.height;
+  const index = font.avail;
+  current.arr.bytes[3] = index + 1;
+  current.arr.addedGlyphs.add(index);
+  const blank = new Array(charSize).fill(0);
+  current.arr.bytes.push(...blank);
+  current.arr.appended.push(...blank);
+  current.font = decodeFont(current.arr);
+  render();
 }
 
 function editorGeometry(g) {
@@ -352,32 +414,37 @@ function setupEditor() {
 
 // Edits live only in the page until downloaded: ask before throwing them away.
 const confirmDiscard = () => !unsaved() ||
-  confirm('Some glyph changes have not been saved with Download. Discard them?');
+  confirm('Font changes have not been downloaded. Discard them?');
 
 // Where the open font comes from: the Jade commit and tag, so you know which fonts you edit.
 function showBase() {
   const box = $('#fd-base');
+  const panel = $('#fd-source');
   box.textContent = '';
   box.className = 'fd-base';
+  panel.hidden = !source;
   if (!source) return;
   if (source.local) {
-    box.append(`Opened from your computer (${source.file}): not tied to a Jade commit.`);
+    box.append(el('div', 'fd-source-path', `Opened from your computer · ${source.file}`),
+      el('div', 'fd-source-subject', 'This file is not tied to a Jade commit.'));
     return;
   }
   if (!jadeInfo) {
-    box.append(`${fontsDir}/${source.file} · Jade version unknown (not a git checkout)`);
+    box.append(el('div', 'fd-source-path', `${fontsDir}/${source.file}`),
+      el('div', 'fd-source-subject', 'Jade version unknown (not a git checkout).'));
     return;
   }
   const j = jadeInfo;
   const ver = j.tags.length ? `tag ${j.tags.join(', ')}` : `no tag on this commit (${j.describe})`;
-  box.append(`${fontsDir}/${source.file} · Jade `);
+  box.append(el('div', 'fd-source-path', `${fontsDir}/${source.file}`), 'Branch ' + (j.branch || 'detached HEAD') + ' · commit ');
   const c = el('code', null, j.short);
   c.title = `${j.commit}\n${j.subject}`;
-  box.append(c, ` · ${ver} · ${j.date}`);
+  box.append(c, ` · ${ver}`,
+    el('div', 'fd-source-subject', `${j.date} · ${j.subject}`));
   const name = source.file;
   if (j.modified.includes(name) || j.untracked.includes(name)) {
     box.classList.add('warn');
-    box.append(el('div', null, j.untracked.includes(name)
+    box.append(el('div', 'fd-source-warning', j.untracked.includes(name)
       ? '⚠ this file is not in Jade\'s git history (new, untracked file)'
       : '⚠ this file has local changes in the Jade checkout: it differs from that commit'));
   }
@@ -386,6 +453,7 @@ function showBase() {
 // ---------------------------------------------------------------- loading
 function load(file, src, local = null) {
   source = { file, text: src, local };
+  showBase();
   updateButtons();
   try {
     const arr = parseCArray(src);
@@ -398,6 +466,8 @@ function load(file, src, local = null) {
     $('#fd-meta').textContent = '';
     $('#fd-warn').hidden = false;
     $('#fd-warn').textContent = `Cannot read this font: ${e.message}`;
+    $('#fd-fix-count').hidden = true;
+    $('#fd-add-char').hidden = true;
     $('#fd-table').textContent = '';
     return;
   }
@@ -407,10 +477,12 @@ function load(file, src, local = null) {
 function updateButtons() {
   $('#fd-reload').disabled = !source;
   $('#fd-download').disabled = !source || !source.text;
-  const mods = modifiedCount();
-  $('#fd-download').textContent = mods ? `⬇ Download (${mods} modified)` : '⬇ Download';
-  $('#fd-download').classList.toggle('modified', mods > 0);
-  $('#fd-download').title = mods ? `Save ${source.file} with the ${mods} modified glyph(s)` : "Download the font's .c file";
+  const mods = modifiedCount(), changed = hasByteChanges();
+  $('#fd-download').textContent = unsaved() ? '⬇ Download (modified)' : '⬇ Download';
+  $('#fd-download').classList.toggle('modified', changed);
+  $('#fd-download').title = changed
+    ? `Download ${source.file} with ${mods} modified or added character(s) and any font repairs`
+    : "Download the font's .c file";
   $('#fd-reload').title = source
     ? `Read ${source.file} again${source.local ? ' from disk' : ' from the server'}` : 'Open a font first';
 }
@@ -470,7 +542,8 @@ async function init() {
     // fonts that differ from the Jade commit are marked in the list
     for (const f of fonts) sel.append(new Option(jade?.modified.includes(f) ? `${f} (locally modified)` : f, f));
     const wanted = decodeURIComponent(location.hash.slice(1));
-    if (fonts.includes(wanted)) { sel.value = wanted; openServerFont(wanted); }
+    const initial = fonts.includes(wanted) ? wanted : fonts[0];
+    if (initial) { sel.value = initial; openServerFont(initial); }
   } catch (e) {
     sel.textContent = '';
     sel.append(new Option('cannot list fonts', ''));
@@ -493,6 +566,8 @@ async function init() {
   for (const id of ['#fd-zoom', '#fd-grid', '#fd-box']) $(id).onchange = render;
   $('#fd-reload').onclick = reload;
   $('#fd-download').onclick = download;
+  $('#fd-fix-count').onclick = fixHeaderCount;
+  $('#fd-add-char').onclick = addBlankCharacter;
   setupEditor();
   window.addEventListener('beforeunload', (e) => { if (unsaved()) e.preventDefault(); });
   updateButtons();

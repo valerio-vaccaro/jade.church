@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>jade.church · logo viewer</title>
+<meta name="description" content="Inspect the compressed RGB565 logo assets used by the Blockstream Jade firmware.">
+<meta name="theme-color" content="#151a1f">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <div class="brand-nav">
+    <h1>jade.church</h1>
+    <nav class="top-nav" aria-label="Tools">
+      <a href="/">libjade emulator</a>
+      <a href="/font-designer.html">font designer</a>
+      <a href="/logo-viewer.html" class="active" aria-current="page">logo viewer</a>
+      <a href="/about.html">about</a>
+    </nav>
+  </div>
+</header>
+
+<main class="fd-page logo-page">
+  <section class="card logo-selection">
+    <div class="fd-toolbar">
+      <label for="logo-select">Logo asset</label>
+      <select id="logo-select" aria-label="Logo asset in jade/logo"><option value="">Loading logos…</option></select>
+      <label for="logo-zoom">Zoom</label>
+      <select id="logo-zoom" aria-label="Logo zoom">
+        <option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option>
+        <option value="4">4×</option><option value="6">6×</option><option value="8">8×</option>
+      </select>
+      <span id="logo-dir" class="muted small"></span>
+    </div>
+    <div class="logo-source" id="logo-source" hidden>
+      <h2>Jade source</h2>
+      <p id="logo-revision"></p>
+      <p id="logo-source-detail" class="muted small"></p>
+      <p id="logo-warning" class="logo-warning" hidden></p>
+    </div>
+  </section>
+
+  <section class="card logo-preview-card">
+    <div class="logo-preview-heading">
+      <div><h2 id="logo-title">Choose a logo</h2><p id="logo-meta" class="muted small">Select an asset from jade/logo/.</p></div>
+      <span id="logo-state" class="muted small" role="status"></span>
+    </div>
+    <div class="logo-canvas-wrap">
+      <canvas id="logo-canvas" aria-label="Decoded Jade logo preview"></canvas>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <span>© 2026 Valerio Vaccaro</span>
+  <a href="https://opensource.org/license/mit/" target="_blank" rel="noopener">MIT License</a>
+</footer>
+<script src="/logo-viewer.js"></script>
+</body>
+</html>

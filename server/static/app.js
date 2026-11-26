@@ -4,6 +4,25 @@ const $ = (sel) => document.querySelector(sel);
 const TEST_MNEMONIC = 'fish inner face ginger orchard permit useful method fence kidney chuckle ' +
   'party favorite sunset draw limb science crane oval letter slot invite sadness banana';
 
+const imagePreview = document.createElement('dialog');
+imagePreview.className = 'image-preview';
+imagePreview.innerHTML = '<div class="image-preview-head"><span></span><button type="button" aria-label="Close image preview">✕</button></div><img alt="">';
+document.body.append(imagePreview);
+const imagePreviewImg = imagePreview.querySelector('img');
+imagePreview.querySelector('button').onclick = () => imagePreview.close();
+imagePreview.addEventListener('click', (e) => {
+  if (e.target === imagePreview || e.target === imagePreviewImg) imagePreview.close();
+});
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('.image-preview-link');
+  if (!link) return;
+  e.preventDefault();
+  imagePreview.querySelector('.image-preview-head span').textContent = link.title || link.querySelector('img')?.alt || 'Screenshot';
+  imagePreviewImg.src = link.href;
+  imagePreviewImg.alt = link.querySelector('img')?.alt || 'Screenshot preview';
+  imagePreview.showModal();
+});
+
 async function api(path, body, contentType = 'application/json') {
   const opts = body === undefined ? {} : {
     method: 'POST',
@@ -43,6 +62,40 @@ $('#log-level').onchange = async (e) => {
   try { await api('/api/loglevel', { level: e.target.value }); }
   catch (err) { log(`[log] ${err.data?.error || err.message}`); }
 };
+
+const flowSoundToggle = $('#flow-sound');
+flowSoundToggle.checked = localStorage.getItem('flow-completion-sound') !== 'off';
+flowSoundToggle.onchange = () => {
+  localStorage.setItem('flow-completion-sound', flowSoundToggle.checked ? 'on' : 'off');
+  if (flowSoundToggle.checked) primeCompletionSound();
+};
+let completionAudio = null;
+function primeCompletionSound() {
+  if (!flowSoundToggle.checked) return;
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (AudioCtx && !completionAudio) completionAudio = new AudioCtx();
+    if (completionAudio?.state === 'suspended') completionAudio.resume().catch(() => {});
+  } catch { /* audio is optional */ }
+}
+function playCompletionSound() {
+  if (!flowSoundToggle.checked) return;
+  primeCompletionSound();
+  if (!completionAudio) return;
+  try {
+    const ctx = completionAudio, start = ctx.currentTime + 0.02;
+    [660, 880].forEach((frequency, i) => {
+      const at = start + i * 0.15;
+      const oscillator = ctx.createOscillator(), gain = ctx.createGain();
+      oscillator.type = 'sine'; oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(0.12, at + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.13);
+      oscillator.connect(gain); gain.connect(ctx.destination);
+      oscillator.start(at); oscillator.stop(at + 0.14);
+    });
+  } catch { /* audio is optional */ }
+}
 
 // ---------------------------------------------------------------- screen
 const canvas = $('#screen');
@@ -405,6 +458,9 @@ loadFirmware();
 // Loaded from /api/status (also after a reconnect), then kept live from the events.
 const runStatus = { flow: null, suite: null };
 let lastRunSummary = { status: 'idle', text: 'Idle' };
+let pendingRunRequest = false;
+let runsBusy = false;
+function pipelineOccupied() { return !!(runStatus.flow || runStatus.suite || pendingRunRequest); }
 
 async function loadStatus() {
   try {
@@ -481,6 +537,15 @@ function renderStatus() {
   box.className = `run-status ${busy ? 'busy' : 'idle'}` + (suite?.failed || flow?.failed ? ' has-failures' : '');
   $('#run-status-text').textContent = busy ? parts.join('\n') : 'Idle: no flow running, nothing queued';
   $('#run-status-stop').hidden = !busy;
+
+  $('#flow-run').disabled = pipelineOccupied();
+  $('#suite-run').disabled = pipelineOccupied();
+  const paused = !!flow && flow.paused != null;
+  $('#flow-step').disabled = !!suite || (!!flow && !paused) || pendingRunRequest;
+  $('#flow-continue').disabled = !!suite || !paused || pendingRunRequest;
+  document.querySelectorAll('#runs-list .rerun').forEach((button) => {
+    if (button.dataset.running !== 'true') button.disabled = pipelineOccupied() || runsBusy;
+  });
 
   const top = $('#top-run-status');
   let summary = lastRunSummary;
@@ -733,7 +798,7 @@ function setFlowStatus(status, text) {
   flowStatus.className = `flow-status ${status || ''}`;
   flowStatus.textContent = text ?? status ?? '';
   const running = status === 'running' || status === 'paused';
-  $('#flow-run').disabled = running;
+  $('#flow-run').disabled = running || pipelineOccupied();
   $('#flow-stop').disabled = !running;
   $('#flow-step').disabled = running && status !== 'paused';
   $('#flow-continue').disabled = status !== 'paused';
@@ -789,6 +854,7 @@ function onFlowEvent(e) {
     return;
   }
   if (e.event === 'end') {
+    playCompletionSound();
     const name = runStatus.flow?.file || runStatus.flow?.name || e.dir;
     lastRunSummary = { status: e.status, text: `Flow ${e.status}: ${name}` };
   }
@@ -823,7 +889,7 @@ function onFlowEvent(e) {
   } else if (e.event === 'screenshot') {
     const box = document.createElement('div');
     box.className = 'shots';
-    box.innerHTML = `<a href="/screenshots/${encodeURI(e.path)}" target="_blank" title="${e.path}">` +
+    box.innerHTML = `<a class="image-preview-link" href="/screenshots/${encodeURI(e.path)}" title="${e.path}">` +
       `<img src="/screenshots/${encodeURI(e.path)}" alt="screenshot ${e.path}"></a>`;
     (activeRow ? activeRow.after(box) : flowOut.append(box));
   } else if (e.event === 'fwerror') {
@@ -848,7 +914,10 @@ function onFlowEvent(e) {
 }
 
 async function runFlow(step = false) {
-  if (!activeTab) return;
+  if (!activeTab || pipelineOccupied()) return;
+  pendingRunRequest = true;
+  renderStatus();
+  primeCompletionSound();
   clearMarks();
   flowOut.textContent = '';
   myRun = null;
@@ -865,6 +934,8 @@ async function runFlow(step = false) {
     setFlowStatus('failed', 'invalid');
   } finally {
     runRequested = false;
+    pendingRunRequest = false;
+    renderStatus();
   }
 }
 $('#flow-run').onclick = () => runFlow();
@@ -1142,6 +1213,7 @@ function onSuiteEvent(e) {
     if (liveSuite?.id === e.suite && !liveSuite.cancelled.includes(e.file)) liveSuite.cancelled.push(e.file);
     outRow('cancelled', null, `${e.file} — cancelled (${e.reason})`);
   } else if (e.event === 'end') {
+    playCompletionSound();
     stopFlowTimeout();
     if (liveSuite?.id === e.suite) {
       liveSuite.running = false;
@@ -1177,6 +1249,8 @@ function onSuiteFlowEvent(e) {
 }
 
 $('#suite-run').onclick = async () => {
+  if (pipelineOccupied()) return;
+  primeCompletionSound();
   try {
     await api('/api/suite/run', { dir: '' });
   } catch (err) {
@@ -1186,7 +1260,7 @@ $('#suite-run').onclick = async () => {
 };
 
 // ---------------------------------------------------------------- results (run history)
-let runsCache = [], runsTimer = null, runsBusy = false, liveSuite = null;
+let runsCache = [], runsTimer = null, liveSuite = null;
 const runsSelected = new Set();
 const runsOpen = new Set();
 const suitesOpen = new Set();   // suite ids shown expanded (each suite is one line until clicked)
@@ -1376,9 +1450,11 @@ function pendingRow(r) {
 function restartQueuedFlowButton(r) {
   const b = el('button', 'small-btn rerun', '↻'); b.type = 'button';
   b.title = `Restart ${r.file}`;
-  b.disabled = runsBusy;
+  b.disabled = runsBusy || pipelineOccupied();
   b.onclick = async (e) => {
     e.stopPropagation();
+    if (pipelineOccupied()) return;
+    primeCompletionSound();
     b.disabled = true;
     try {
       const path = String(r.file || '').split('/').map(encodeURIComponent).join('/');
@@ -1424,7 +1500,7 @@ async function toggleDetail(wrap, r, forceOpen) {
   const shotsBox = (paths) => {
     const g = el('div', 'gallery step-shots');
     for (const p of paths) {
-      const a = el('a'); a.href = `/screenshots/${encodeURI(p)}`; a.target = '_blank'; a.title = p;
+      const a = el('a', 'image-preview-link'); a.href = `/screenshots/${encodeURI(p)}`; a.title = p;
       const img = el('img'); img.src = a.href; img.alt = p; img.loading = 'lazy';
       a.append(img, el('span', null, p.split('/').pop()));
       g.append(a);
@@ -1459,10 +1535,13 @@ async function toggleDetail(wrap, r, forceOpen) {
 // edits and regenerated flows), else from the source saved with the run
 function rerunButton(r, cls, label) {
   const b = el('button', cls, label); b.type = 'button';
+  b.dataset.running = String(r.status === 'running');
   b.title = r.file ? `Run ${r.file} again (re-read from flows/)` : 'Run this flow again (the source saved with the run)';
-  b.disabled = runsBusy || r.status === 'running';
+  b.disabled = pipelineOccupied() || runsBusy || r.status === 'running';
   b.onclick = async (e) => {
     e.stopPropagation();
+    if (pipelineOccupied()) return;
+    primeCompletionSound();
     b.disabled = true;
     try {
       const res = await api('/api/runs/rerun', { dir: r.dir });

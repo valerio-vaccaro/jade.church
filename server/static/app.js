@@ -1333,7 +1333,22 @@ function renderRuns() {
       if (!cancelled.has(suiteLabel(file))) addPlaceholder(file, 'pending', (liveSuite.index || 0) + i + 1);
     });
   }
-  const runs = allRuns.filter((r) => !filter || (filter === 'fwerrors' ? r.firmware_errors > 0 : r.status === filter));
+  const firmwareFilter = $('#runs-firmware-filter');
+  const chosenFirmware = firmwareFilter.value;
+  const firmwareKeys = new Map();
+  for (const r of allRuns) {
+    if (!r.firmware) continue;
+    const key = firmwareKey(r.firmware);
+    if (!firmwareKeys.has(key)) firmwareKeys.set(key, fwShort(r.firmware) || r.firmware.file || 'Unknown firmware');
+  }
+  firmwareFilter.replaceChildren(new Option('all firmware', ''));
+  for (const [key, label] of [...firmwareKeys].sort((a, b) => a[1].localeCompare(b[1]))) {
+    firmwareFilter.add(new Option(label, key));
+  }
+  firmwareFilter.value = firmwareKeys.has(chosenFirmware) ? chosenFirmware : '';
+  const runs = allRuns.filter((r) =>
+    (!filter || (filter === 'fwerrors' ? r.firmware_errors > 0 : r.status === filter)) &&
+    (!firmwareFilter.value || firmwareKey(r.firmware) === firmwareFilter.value));
   const total = allRuns.length;
   const n = (st) => allRuns.filter((r) => r.status === st).length;
   $('#runs-summary').textContent = total
@@ -1377,6 +1392,7 @@ function renderRuns() {
     const failed = g.runs.filter((r) => r.status === 'failed').length;
     const running = g.runs.some((r) => r.status === 'running' || r.status === 'pending');
     const cancelled = g.runs.some((r) => r.status === 'cancelled');
+    const firmwareLabels = [...new Set(g.runs.map((r) => r.firmware && (fwShort(r.firmware) || r.firmware.file)).filter(Boolean))];
     const st = running ? 'running' : failed ? 'failed' : cancelled ? 'cancelled' :
       g.runs.every((r) => r.status === 'passed') ? 'passed' : 'stopped';
     head.append(cb, el('span', 'caret', isOpen ? '▾' : '▸'), el('span', `ic ${st}`, ICON[st]),
@@ -1384,7 +1400,8 @@ function renderRuns() {
       el('span', 'meta', `${fmtTime(g.runs.find((r) => !r.synthetic)?.started)} · ${g.runs.length}/${g.runs[0].suite.total} flows · ` +
         `${g.runs.filter((r) => r.status === 'passed').length} passed` + (failed ? ` · ${failed} failed` : '') +
         (cancelled ? ` · ${g.runs.filter((r) => r.status === 'cancelled').length} cancelled` : '') +
-        (seconds ? ` · ${fmtDuration(seconds)}` : '')));
+        (seconds ? ` · ${fmtDuration(seconds)}` : '') +
+        (firmwareLabels.length ? ` · ${firmwareLabels.join(', ')}` : '')));
     box.append(head);
     if (isOpen) {
       for (const r of [...g.runs].sort((a, b) => (a.suite.index - b.suite.index))) {
@@ -1401,6 +1418,12 @@ function fwShort(fw) {
   if (!fw) return null;
   const board = { 'jade-v1': 'Jade v1', 'jade-v2': 'Jade v2' }[fw.board] || fw.board || '';
   return [board, fw.jade_version, fw.ci ? 'CI' : null].filter(Boolean).join(' ') || fw.file;
+}
+
+function firmwareKey(fw) {
+  if (!fw) return '';
+  return JSON.stringify([fw.file || '', fw.board || '', fw.jade_version || '', !!fw.ci,
+    fw.build_type || '', fw.options || null]);
 }
 
 function runRow(r) {
@@ -1605,6 +1628,7 @@ $('#runs-export-selected').onclick = () => exportRuns([...runsSelected]);
 $('#runs-export-all').onclick = () => exportRuns([], true);
 $('#runs-refresh').onclick = loadRuns;
 $('#runs-filter').onchange = renderRuns;
+$('#runs-firmware-filter').onchange = renderRuns;
 $('#runs-delete-selected').onclick = () => deleteRuns([...runsSelected]);
 $('#runs-delete-all').onclick = () => deleteRuns([], true);
 $('#runs-select-all').onchange = (e) => {

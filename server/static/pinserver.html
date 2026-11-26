@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>jade.church · pinserver</title>
+<meta name="description" content="Point a Blockstream Jade at the jade.church test pinserver with a QR code, and inspect the PIN records it keeps.">
+<meta name="theme-color" content="#151a1f">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <div class="brand-nav">
+    <h1>jade.church</h1>
+    <nav class="top-nav" aria-label="Tools">
+      <a href="/">libjade emulator</a>
+      <a href="/font-designer.html">font designer</a>
+      <a href="/logo-designer.html">logo designer</a>
+      <a href="/screen-designer.html">screen designer</a>
+      <a href="/pinserver.html" class="active" aria-current="page">pinserver</a>
+      <a href="/about.html">about</a>
+    </nav>
+  </div>
+</header>
+
+<main class="fd-page ps-page">
+  <p class="ps-warning">This is a <b>test</b> pinserver. It uses the key pair committed in the Jade repository, so its private
+    key is public and the PINs it guards protect nothing. Use it with test wallets only, never with real funds.</p>
+
+  <div class="ps-grid">
+    <section class="card ps-config" aria-labelledby="ps-config-title">
+      <h2 id="ps-config-title">Configure a Jade</h2>
+      <div class="ps-mode" role="radiogroup" aria-label="What the QR code does">
+        <label><input type="radio" name="ps-mode" value="set" checked> Use this pinserver</label>
+        <label><input type="radio" name="ps-mode" value="reset"> Back to Blockstream's default</label>
+      </div>
+      <div id="ps-fields" class="ps-fields">
+        <label>Scheme
+          <select id="ps-scheme"><option>http</option><option>https</option></select></label>
+        <label>Host (IP or DNS name)
+          <input id="ps-host" type="text" value="jade.church" spellcheck="false" autocomplete="off"></label>
+        <label>Port
+          <input id="ps-port" type="number" min="1" max="65535" value="8096"></label>
+        <label class="ps-wide">Second URL <span class="muted">(optional, eg. an onion address)</span>
+          <input id="ps-urlb" type="text" placeholder="http://….onion" spellcheck="false" autocomplete="off"></label>
+        <label class="fd-check ps-wide"><input type="checkbox" id="ps-pubkey" checked> Include the server public key
+          <span class="muted">(needed: this server does not use Blockstream's key)</span></label>
+      </div>
+      <figure class="ps-qr">
+        <canvas id="ps-qr" aria-label="QR code to scan with the Jade"></canvas>
+        <figcaption id="ps-qr-info" class="muted small"></figcaption>
+      </figure>
+      <div class="ps-ur">
+        <code id="ps-ur"></code>
+        <button type="button" id="ps-copy-ur">Copy</button>
+      </div>
+      <p id="ps-error" class="ps-error" hidden></p>
+      <h3>On the Jade</h3>
+      <ol class="ps-steps">
+        <li>Turn it on and tap the front button while the logo is showing, to open the startup menu.</li>
+        <li>Choose <b>Blind Oracle</b>, then <b>Scan Oracle QR</b>, and scan this code.</li>
+        <li>Check the URL and public key on screen and confirm.</li>
+      </ol>
+      <p class="muted small">A Jade that already has a wallet refuses a new public key (“Cannot update initialized unit”):
+        factory reset it first. The Jade does not connect to the pinserver itself: the companion app does, so the URL must
+        be reachable from the phone or computer running it.</p>
+      <details class="ps-rpc">
+        <summary>Same thing over USB (<code>update_pinserver</code>)</summary>
+        <p class="muted small">Paste these params in the emulator's RPC console, or send them with <code>jadepy</code>.</p>
+        <pre id="ps-rpc"></pre>
+      </details>
+    </section>
+
+    <section class="card ps-records" aria-label="Pinserver records and messages">
+      <div class="ps-tabbar">
+        <div class="ps-tabs" role="tablist" aria-label="Pinserver views">
+          <button type="button" role="tab" id="ps-tab-records" aria-controls="ps-panel-records" aria-selected="true">PIN records
+            <span id="ps-count" class="ps-tab-count"></span></button>
+          <button type="button" role="tab" id="ps-tab-messages" aria-controls="ps-panel-messages" aria-selected="false" tabindex="-1">Messages
+            <span id="ps-msg-count" class="ps-tab-count"></span></button>
+        </div>
+        <span class="ps-tools">
+          <span id="ps-status" class="muted small"></span>
+          <button type="button" id="ps-refresh">↻ Refresh</button>
+        </span>
+      </div>
+      <div id="ps-panel-records" role="tabpanel" aria-labelledby="ps-tab-records">
+      <p class="muted small">One record per Jade PIN, named after the hash of the PIN public key the Jade derives. The
+        pinserver deletes a record after the third wrong PIN in a row. jade.church logs each request, so it learns the PIN
+        public key and can decrypt the record after the Jade's next request.</p>
+      <div class="ps-table-wrap">
+        <table class="ps-table">
+          <thead><tr>
+            <th scope="col">Record</th><th scope="col">State</th><th scope="col">Wrong PINs</th>
+            <th scope="col">Last request</th><th scope="col">Changed</th><th scope="col"><span class="sr-only">Actions</span></th>
+          </tr></thead>
+          <tbody id="ps-rows"></tbody>
+        </table>
+      </div>
+      <p id="ps-empty" class="muted" hidden>No PIN records yet. Set a PIN on a Jade that uses this pinserver.</p>
+      <p id="ps-folder" class="muted small"></p>
+      </div>
+      <div id="ps-panel-messages" role="tabpanel" aria-labelledby="ps-tab-messages" hidden>
+        <p class="muted small">Every request a Jade (through its companion app) sends to the pinserver, and every reply,
+          oldest first. Each one is shown twice: <span class="ps-key ps-key-wire">encrypted</span> as it travels over the
+          network, and <span class="ps-key ps-key-dec">decrypted</span> as the pinserver reads it with its private key.
+          That key is public here, which is why the decrypted view exists at all.</p>
+        <div class="fd-toolbar ps-msg-tools">
+          <label class="fd-check"><input type="checkbox" id="ps-show-wire" checked> encrypted</label>
+          <label class="fd-check"><input type="checkbox" id="ps-show-dec" checked> decrypted</label>
+          <label class="fd-check"><input type="checkbox" id="ps-follow" checked> follow newest</label>
+          <span class="spacer"></span>
+          <button type="button" id="ps-msg-clear" class="danger">Clear log</button>
+        </div>
+        <div id="ps-msgs" class="ps-msgs" role="log" aria-live="off"></div>
+        <p id="ps-msg-empty" class="muted" hidden>No messages yet. They appear when a Jade sets or checks its PIN with this
+          pinserver.</p>
+      </div>
+    </section>
+  </div>
+</main>
+
+<div id="ps-toast" class="sd-toast" role="status" hidden></div>
+
+<footer class="site-footer">
+  <span>© 2026 Valerio Vaccaro</span>
+  <a href="https://opensource.org/license/mit/" target="_blank" rel="noopener">MIT License</a>
+</footer>
+<script src="/qrcode.js"></script>
+<script src="/pinserver.js"></script>
+</body>
+</html>

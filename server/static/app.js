@@ -388,7 +388,7 @@ print(jade.get_version_info())</pre>`;
     ['CBOR-RPC port', info.bridge ? `tcp:${info.bridge.host}:${info.bridge.port}` : 'disabled'],
     ['Storage (NVS)', info.nvs_file || 'not persisted'],
     ['Run history', info.runs_dir],
-    ['Test pinserver', info.test_pinserver || 'not started (see --test-pinserver-port)'],
+    ['Test pinserver', info.test_pinserver || 'not started (see --pinserver-port)'],
     ['Firmware log level', `${info.log_level} (shown in the Activity box and the server terminal)`],
   ];
   const dl = $('#config-info');

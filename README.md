@@ -20,7 +20,7 @@ browser is showing.
 
 The top bar switches between the tools: **libjade emulator** (this page),
 **font designer** (`/font-designer.html`), **logo designer** (`/logo-designer.html`),
-**screen designer** (`/screen-designer.html`) and **about** (`/about.html`). The font designer opens a font from
+**screen designer** (`/screen-designer.html`), **pinserver** (`/pinserver.html`) and **about** (`/about.html`). The font designer opens a font from
 `jade/main/fonts/` (or any font `.c` file from disk, with **Open file…**) and draws every
 glyph in a table, decoded the way the firmware's `display.c` does: fixed-width fonts
 (`[width, height, first, count]` header) and proportional ones (per-glyph offsets and
@@ -287,9 +287,25 @@ what ran before.
 
 `93-pinserver` talks to a local blind PIN server. It uses Jade's own `pinserver`
 submodule and the **test** key committed in the Jade repo. jade.church starts it on
-`127.0.0.1:8096` (`--test-pinserver-port`, `-1` disables it) when `flask`,
-`python-dotenv` and `wallycore` are installed. You can also run it alone with
-`scripts/run_pinserver.py`.
+`127.0.0.1:8096` (`--pinserver-port`, `-1` disables it) when `flask`,
+`python-dotenv`, `redis` and `wallycore` are installed. You can also run it alone with
+`scripts/run_pinserver.py`. To share it with other devices on your network, start
+jade.church with `--pinserver-host 0.0.0.0` (or a LAN address, but the flows expect it on
+`127.0.0.1`) and point each Jade at `http://<your-ip>:8096` with the key in
+`jade/server_public_key.pub`. Its private key is public, so it protects nothing: use it
+only for testing, never for real funds.
+
+The **pinserver** page (`/pinserver.html`) shows a QR code that points a Jade at this
+test pinserver (startup menu: tap the front button on the logo, then **Blind Oracle →
+Scan Oracle QR**). The QR code is a BC-UR `jade-updps` with an `update_pinserver` call:
+host (`jade.church` by default), port, optional second URL and the test public key, or a
+reset to Blockstream's default. The page also lists the PIN records in `data/pinserver/`.
+`scripts/run_pinserver.py` keeps a `<record>.json` next to each `<record>.pin`, with the
+Jade's PIN public key and a log of the requests. With that key and the public test server
+key, jade.church decrypts a record and shows its wrong-PIN count, anti-replay counter,
+PIN-secret hash and stored key. **Allow 3 more tries** resets the wrong-PIN count to 0.
+**Delete** removes the record, so that Jade can no longer unlock with its PIN. Records
+written before logging started stay encrypted until their Jade makes its next request.
 
 What is not covered, and why:
 - The `test_pin_actions.py` tests that set a PIN use `debug_set_pin`, which only CI
@@ -354,10 +370,10 @@ python -m pip install -r requirements.txt
 ```
 
 `wallycore` supports BIP85 entropy decryption and is installed with the main Python
-requirements. The local test pinserver also needs `flask` and `python-dotenv`:
-
-Install those optional packages in the same environment with
-`python -m pip install flask python-dotenv`. The submodules need
+requirements. The local test pinserver also needs `flask`, `python-dotenv` and `redis`.
+`./run.sh` installs them into `venv/` from `jade/pinserver/requirements.txt` when they are
+missing (skipped with `--pinserver-port -1`). Otherwise install them yourself with
+`python -m pip install -r jade/pinserver/requirements.txt`. The submodule needs
 `git -C jade submodule update --init pinserver`.
 
 ```sh

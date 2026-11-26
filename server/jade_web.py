@@ -33,6 +33,7 @@ from report import export_zip
 from firmware import default_firmware, describe as describe_firmware, list_firmware
 from reference import build_reference
 from libjade_host import LOG_LEVELS, JadeRpcError, LibJadeHost
+import pinserver_records
 
 logger = logging.getLogger('jade-web')
 
@@ -41,6 +42,7 @@ WEB_DIR = os.path.join(ROOT, 'server', 'static')   # the browser UI, served as-i
 FLOWS_DIR = os.path.join(ROOT, 'flows')
 JADE_DIR = os.path.join(ROOT, 'jade')
 FONTS_DIR = os.path.join(JADE_DIR, 'main', 'fonts')   # firmware fonts, shown by the font designer
+PINSERVER_DIR = os.path.join(ROOT, 'data', 'pinserver')   # test pinserver key, PIN records and their logs
 LOGOS_DIR = os.path.join(JADE_DIR, 'logo')            # compressed firmware logos, shown by logo designer
 BUTTON_EVENTS_H = os.path.join(JADE_DIR, 'main', 'button_events.h')  # BTN_ ids, offered by the screen designer
 CAMERA_FRAME_SIZE = 320 * 240  # CAMERA_IMAGE_WIDTH x CAMERA_IMAGE_HEIGHT, 8-bit grayscale
@@ -385,6 +387,24 @@ class App:
         self.bus.publish('firmware', file=file, label=item['label'],
                          width=self.jade.width, height=self.jade.height)
         return item
+
+    def pinserver_info(self):
+        """The test pinserver: where it listens, the key a Jade needs to use it, and its records."""
+        reach = getattr(self.args, 'pinserver_reach', None)
+        running = False
+        if reach:
+            with socket.socket(socket.AF_INET6 if ':' in reach[0] else socket.AF_INET) as probe:
+                probe.settimeout(0.5)
+                running = probe.connect_ex(reach) == 0
+        pubkey = None
+        try:
+            with open(os.path.join(JADE_DIR, 'server_public_key.pub'), 'rb') as f:
+                pubkey = f.read().hex()
+        except OSError:
+            pass
+        return {'url': getattr(self.args, 'test_pinserver', None), 'running': running,
+                'host': self.args.pinserver_host, 'port': self.args.pinserver_port,
+                'pubkey': pubkey, **pinserver_records.list_records(PINSERVER_DIR, JADE_DIR)}
 
     def build_info(self):
         """Firmware version and build options, from the .json the build script writes next to the binary."""
@@ -735,22 +755,32 @@ def start_test_pinserver(args):
     Python dependencies are missing. Returns the subprocess, or None."""
     import importlib.util
     import subprocess
-    port = args.test_pinserver_port
+    port = args.pinserver_port
+    host = args.pinserver_host
     if port < 0:
         return None
-    missing = [m for m in ('flask', 'dotenv', 'wallycore') if importlib.util.find_spec(m) is None]
+    # the address to reach it at: a wildcard bind is reachable on loopback
+    reach = '127.0.0.1' if host in ('0.0.0.0', '') else '::1' if host == '::' else host
+    shown = f'[{reach}]' if ':' in reach else reach
+    url = f'http://{shown}:{port}'
+    if reach != host:
+        url += f' (listening on all interfaces, {host})'
+    missing = [m for m in ('flask', 'dotenv', 'redis', 'wallycore') if importlib.util.find_spec(m) is None]
     if missing or not os.path.isfile(os.path.join(JADE_DIR, 'pinserver', 'flaskserver.py')):
         logger.info('Test pinserver not started (missing: %s)', ', '.join(missing) or 'jade/pinserver')
         return None
-    with socket.socket() as probe:
-        if probe.connect_ex(('127.0.0.1', port)) == 0:
+    with socket.socket(socket.AF_INET6 if ':' in reach else socket.AF_INET) as probe:
+        if probe.connect_ex((reach, port)) == 0:
             logger.info('Test pinserver: port %d already in use, assuming it is running', port)
-            args.test_pinserver = f'http://127.0.0.1:{port} (started elsewhere)'
+            args.test_pinserver = f'http://{shown}:{port} (started elsewhere)'
+            args.pinserver_reach = (reach, port)
             return None
-    proc = subprocess.Popen([sys.executable, os.path.join(ROOT, 'scripts', 'run_pinserver.py'), '--port', str(port),
-                             '--data', os.path.join(ROOT, 'data', 'pinserver'), '--exit-with-parent'],
+    proc = subprocess.Popen([sys.executable, os.path.join(ROOT, 'scripts', 'run_pinserver.py'),
+                             '--host', host, '--port', str(port),
+                             '--data', PINSERVER_DIR, '--exit-with-parent'],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    args.test_pinserver = f'http://127.0.0.1:{port}'
+    args.test_pinserver = url
+    args.pinserver_reach = (reach, port)
     logger.info('Test pinserver: %s (pid %d)', args.test_pinserver, proc.pid)
     return proc
 
@@ -846,6 +876,10 @@ def make_handler(app):
                     if os.path.isdir(LOGOS_DIR) else []
                 return self._send_json({'dir': os.path.relpath(LOGOS_DIR, ROOT), 'logos': names,
                                         'jade': fonts_source(LOGOS_DIR)})
+            if path == '/api/pinserver':
+                return self._send_json(app.pinserver_info())
+            if path == '/api/pinserver/messages':
+                return self._send_json({'messages': pinserver_records.read_messages(PINSERVER_DIR)})
             if path == '/api/button-events':
                 return self._send_json({'events': button_events()})
             if path.startswith('/api/logos/'):
@@ -972,6 +1006,18 @@ def make_handler(app):
                     names = [r['dir'] for r in app.list_runs()] if req.get('all') else req.get('dirs', [])
                     deleted, skipped = app.delete_runs(names)
                     return self._send_json({'deleted': deleted, 'skipped': skipped})
+                if path == '/api/pinserver/messages/clear':
+                    pinserver_records.clear_messages(PINSERVER_DIR)
+                    return self._send_json({'ok': True})
+                if path in ('/api/pinserver/reset', '/api/pinserver/delete'):
+                    rid = json.loads(self._body() or b'{}').get('id')
+                    try:
+                        if path.endswith('/reset'):
+                            was = pinserver_records.reset_attempts(PINSERVER_DIR, JADE_DIR, rid)
+                            return self._send_json({'ok': True, 'was': was})
+                        return self._send_json({'ok': True, 'removed': pinserver_records.delete_record(PINSERVER_DIR, rid)})
+                    except pinserver_records.RecordError as e:
+                        return self._send_json({'error': str(e)}, HTTPStatus.BAD_REQUEST)
                 if path == '/api/restart':
                     app.restart_emulator()
                     return self._send_json({'ok': True})
@@ -1068,9 +1114,14 @@ def main():
                    help='persistent NVS storage file, "none" to keep nothing (default: %(default)s)')
     p.add_argument('--runs-dir', '--screenshots-dir', dest='runs_dir', default=os.path.join(ROOT, 'data', 'runs'),
                    help='flow run history: one folder per run with run.json + screenshots (default: %(default)s)')
-    p.add_argument('--test-pinserver-port', type=int, default=8096,
+    p.add_argument('--pinserver-port', '--test-pinserver-port', dest='pinserver_port', type=int, default=8096,
                    help='start the test pinserver (jade/pinserver with the test key, for the pinserver '
-                        'test flows) on 127.0.0.1:PORT; -1 = do not start it (default: %(default)s)')
+                        'test flows) on PINSERVER_HOST:PORT; -1 = do not start it (default: %(default)s)')
+    p.add_argument('--pinserver-host', default='127.0.0.1',
+                   help='bind address of the test pinserver, eg. 0.0.0.0 to share it on the network. It uses '
+                        'the public *test* key: never for real funds. The 93-pinserver flows use '
+                        'http://127.0.0.1:PORT, so keep loopback reachable (127.0.0.1 or 0.0.0.0) '
+                        '(default: %(default)s)')
     p.add_argument('--no-capture-logs', action='store_true',
                    help="don't show the firmware's log output in the web UI (terminal only)")
     p.add_argument('--log-level', default='WARNING', choices=list(LOG_LEVELS),

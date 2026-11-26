@@ -29,6 +29,7 @@
       <a href="/font-designer.html">font designer</a>
       <a href="/logo-designer.html">logo designer</a>
       <a href="/screen-designer.html">screen designer</a>
+      <a href="/pinserver.html">pinserver</a>
       <a href="/about.html">about</a>
     </nav>
   </div>
@@ -128,14 +129,12 @@
           <span class="spacer"></span>
         </div>
         <div class="row">
+          <button id="suite-run" class="suite" title="Run every flow in flows/ (examples and jade-tests/), one after the other">⏵⏵ Run all flows</button>
           <button id="flow-run" class="primary" title="Run the flow of the selected tab (Ctrl+Enter)">▶ Run</button>
           <button id="flow-step" title="Run step by step (F10): starts paused at the first step; each click runs the highlighted step">⏯ Step</button>
           <button id="flow-continue" disabled title="Run the remaining steps without pausing (F8)">⏵ Continue</button>
           <button id="flow-stop" disabled>■ Stop</button>
           <button id="flow-check" title="Check the syntax of the selected tab">Check</button>
-        </div>
-        <div class="row">
-          <button id="suite-run" title="Run every flow in flows/ (examples and jade-tests/), one after the other">⏵⏵ Run all flows</button>
         </div>
         <div class="flow-tabs" id="flow-tabs" role="tablist" aria-label="Open flows"></div>
         <div class="flow-empty" id="flow-empty" hidden>

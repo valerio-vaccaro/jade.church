@@ -349,6 +349,7 @@ the `jade` submodule. It needs `cmake`, a C compiler and an ESP-IDF checkout in
 `IDF_PATH` (default `~/esp/esp-idf`; only its mbedtls and http_parser sources are
 compiled natively, the ESP toolchain is not needed), at the version pinned in
 `jade/Dockerfile` (`ESP_IDF_BRANCH`, currently v5.5.5).
+The included prebuilt firmware images were built on Debian 13.
 It compiles each variant out of tree in `build/<variant>/`, so
 the submodule stays clean. It then installs the binary in `firmware/`, named after
 everything that defines it, next to a `.json` describing the build:

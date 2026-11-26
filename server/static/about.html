@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About · jade.church</title>
+<meta name="description" content="Learn what jade.church is, how to run your own instance, and how to use the Jade firmware simulator safely.">
+<meta name="theme-color" content="#151a1f">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <div class="brand-nav">
+    <h1>jade.church</h1>
+    <nav class="top-nav" aria-label="Tools">
+      <a href="/">libjade emulator</a>
+      <a href="/font-designer.html">font designer</a>
+      <a href="/about.html" class="active" aria-current="page">about</a>
+    </nav>
+  </div>
+</header>
+
+<main class="fd-page about-page">
+  <section class="about-hero">
+    <div class="about-copy">
+      <span class="about-eyebrow">INDEPENDENT DEVELOPMENT TOOL</span>
+      <h2>Explore Jade firmware, without a hardware device.</h2>
+      <p>jade.church runs Blockstream Jade firmware as <strong>libjade</strong>, a native
+        library, and lets you interact with the emulated device in your browser. It is a
+        workspace for development, debugging, and testing firmware behaviour.</p>
+      <a class="about-repo-link" href="https://github.com/valerio-vaccaro/jade.church" target="_blank" rel="noopener">
+        Browse the source code <span aria-hidden="true">↗</span>
+      </a>
+    </div>
+    <div class="about-visual" aria-hidden="true">
+      <div class="about-browser">
+        <div class="browser-chrome">
+          <div class="browser-dots"><i></i><i></i><i></i></div>
+          <div class="browser-address"><span>⌑</span> jade.church</div>
+          <span class="browser-menu">•••</span>
+        </div>
+        <div class="browser-app-header">
+          <strong>jade.church</strong>
+          <div><span>libjade emulator</span><span>font designer</span></div>
+          <i></i>
+        </div>
+        <div class="browser-app-content">
+          <div class="browser-device-column">
+            <div class="browser-device-label">firmware · jade_v2</div>
+            <div class="browser-device-screen"><b>WELCOME</b><span>Ready to begin</span><i></i></div>
+            <div class="browser-device-controls"><i></i><i></i><i></i></div>
+            <div class="browser-log"><b>ACTIVITY</b><span></span><span></span><span></span></div>
+          </div>
+          <div class="browser-flow-panel">
+            <div class="browser-tabs"><i></i><i></i><i></i></div>
+            <div class="browser-flow-card"><b>Flow</b><span>Build and run test flows</span><i></i><i></i><i></i></div>
+            <div class="browser-flow-card muted-card"><b>Results</b><span>Inspect device responses</span><i></i></div>
+          </div>
+        </div>
+      </div>
+      <div class="about-visual-label">THE JADE.CHURCH WEB INTERFACE</div>
+    </div>
+  </section>
+
+  <section class="about-capabilities" aria-labelledby="about-capabilities-title">
+    <div class="about-section-heading">
+      <span class="about-eyebrow">INSIDE THE TOOL</span>
+      <h2 id="about-capabilities-title">A hands-on firmware workspace</h2>
+      <p>Use the browser interface to explore the same emulated device across interactive
+        sessions and repeatable test flows.</p>
+    </div>
+    <div class="about-capability-grid">
+      <article class="about-capability capability-mint">
+        <span class="capability-icon" aria-hidden="true">▣</span>
+        <h3>Emulated device</h3>
+        <p>View the firmware screen, press its buttons, change firmware builds, and
+          capture screenshots. You can also feed QR images to the firmware’s scanner.</p>
+      </article>
+      <article class="about-capability capability-violet">
+        <span class="capability-icon" aria-hidden="true">⌁</span>
+        <h3>Test and inspect</h3>
+        <p>Run scripted flows, inspect firmware activity, and use the RPC console to
+          send messages and examine raw replies.</p>
+      </article>
+      <article class="about-capability capability-blue">
+        <span class="capability-icon" aria-hidden="true">◉</span>
+        <h3>Connect your tools</h3>
+        <p>A TCP port speaks Jade’s CBOR-RPC protocol, allowing tools such as jadepy
+          and test suites to drive the emulated device.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="about-safety" aria-labelledby="about-safety-title">
+    <div class="about-safety-icon" aria-hidden="true">⚠</div>
+    <div>
+      <span class="about-eyebrow">USE TEST DATA ONLY</span>
+      <h2 id="about-safety-title">Never use real funds or secret material</h2>
+      <p>This is a development simulator, not a secure wallet. Anything entered into an
+        instance—including a recovery phrase or mnemonic—must be considered public and
+        compromised. Never enter a real seed or secret here.</p>
+    </div>
+  </section>
+
+  <section class="about-grid" aria-label="Project information">
+    <article class="card about-card">
+      <span class="about-card-mark" aria-hidden="true">⌘</span>
+      <h2>Run it yourself</h2>
+      <p>The project is open source. Download the code, follow the setup instructions,
+        and run an instance on a machine you control.</p>
+      <a href="https://github.com/valerio-vaccaro/jade.church" target="_blank" rel="noopener">Repository and setup guide <span aria-hidden="true">↗</span></a>
+    </article>
+    <article class="card about-card">
+      <span class="about-card-mark about-mark-teal" aria-hidden="true">◇</span>
+      <h2>Independent project</h2>
+      <p>jade.church is an independent community development tool. It is not an official
+        Blockstream product, and Blockstream does not endorse it.</p>
+    </article>
+    <article class="card about-card">
+      <span class="about-card-mark about-mark-blue" aria-hidden="true">©</span>
+      <h2>Brand ownership</h2>
+      <p>Jade and Blockstream names, logos, and related brand assets belong to
+        Blockstream. Their use here does not imply sponsorship or affiliation.</p>
+    </article>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <span>© 2026 Valerio Vaccaro</span>
+  <a href="https://opensource.org/license/mit/" target="_blank" rel="noopener">MIT License</a>
+</footer>
+</body>
+</html>

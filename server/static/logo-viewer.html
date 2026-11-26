@@ -28,10 +28,17 @@
     <div class="fd-toolbar">
       <label for="logo-select">Logo asset</label>
       <select id="logo-select" aria-label="Logo asset in jade/logo"><option value="">Loading logos…</option></select>
+      <button type="button" id="logo-open">Open file…</button>
+      <input type="file" id="logo-file" accept=".bin.gz,application/gzip,application/octet-stream" hidden>
+      <button type="button" id="logo-reload" disabled>↻ Reload</button>
+      <button type="button" id="logo-download" class="primary" disabled>⬇ Download edited .bin.gz</button>
+      <button type="button" id="logo-new">＋ New image</button>
       <label for="logo-zoom">Zoom</label>
       <select id="logo-zoom" aria-label="Logo zoom">
-        <option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option>
+        <option value="auto" selected>auto</option>
+        <option value="1">1×</option><option value="2">2×</option><option value="3">3×</option>
         <option value="4">4×</option><option value="6">6×</option><option value="8">8×</option>
+        <option value="12">12×</option><option value="16">16×</option><option value="24">24×</option><option value="32">32×</option>
       </select>
       <span id="logo-dir" class="muted small"></span>
     </div>
@@ -48,11 +55,47 @@
       <div><h2 id="logo-title">Choose a logo</h2><p id="logo-meta" class="muted small">Select an asset from jade/logo/.</p></div>
       <span id="logo-state" class="muted small" role="status"></span>
     </div>
+    <div class="logo-edit-tools">
+      <span class="muted small">Click the preview to edit its pixels.</span>
+    </div>
+    <div class="logo-palette-row"><span class="muted small">Image palette</span><div id="logo-palette" class="logo-palette" role="group" aria-label="Colors used in this image"></div></div>
     <div class="logo-canvas-wrap">
-      <canvas id="logo-canvas" aria-label="Decoded Jade logo preview"></canvas>
+      <div id="logo-canvas-stage" class="logo-canvas-stage">
+      <canvas id="logo-canvas" tabindex="0" role="button" aria-label="Open logo pixel editor"></canvas>
+      </div>
     </div>
   </section>
 </main>
+
+<dialog id="logo-new-dialog" class="logo-new-dialog" aria-labelledby="logo-new-title">
+  <form id="logo-new-form">
+    <h2 id="logo-new-title">Create a new logo image</h2>
+    <p class="muted small">Start with a blank RGB565 image, then paint pixels and download it as a .bin.gz file.</p>
+    <div class="logo-new-dimensions">
+      <label>Width <input id="logo-new-width" type="number" min="1" max="240" value="64" required></label>
+      <label>Height <input id="logo-new-height" type="number" min="1" max="32767" value="32" required></label>
+    </div>
+    <p id="logo-new-error" class="logo-error" hidden></p>
+    <div class="logo-new-actions">
+      <button type="button" id="logo-new-cancel">Cancel</button>
+      <button type="submit" class="primary">Create image</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="logo-editor-dialog" class="logo-editor-dialog" aria-labelledby="logo-editor-title">
+  <div class="logo-editor-head">
+    <div><h2 id="logo-editor-title">Edit logo</h2><p id="logo-editor-meta" class="muted small"></p></div>
+    <button type="button" id="logo-editor-close" class="link" aria-label="Close editor">✕</button>
+  </div>
+  <div class="logo-editor-tools">
+    <label class="logo-brush-label" for="logo-brush">Choose new color <input id="logo-brush" type="color" value="#ffb341"></label>
+    <button type="button" id="logo-reset" disabled>↺ Reset</button>
+    <span class="muted small">Click or drag to paint with the selected color.</span>
+  </div>
+  <div class="logo-editor-palette-row"><span class="muted small">Image palette</span><div id="logo-editor-palette" class="logo-palette" role="group" aria-label="Colors used in this image"></div></div>
+  <div class="logo-editor-canvas-wrap"><canvas id="logo-edit-canvas" aria-label="Zoomed pixel editor"></canvas></div>
+</dialog>
 
 <footer class="site-footer">
   <span>© 2026 Valerio Vaccaro</span>

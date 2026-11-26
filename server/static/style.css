@@ -207,13 +207,52 @@ main {
 .logo-preview-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .logo-preview-heading h2 { margin-bottom: 3px; color: var(--text); text-transform: none; letter-spacing: 0; font-size: 15px; }
 .logo-preview-heading p { margin: 0 0 10px; }
+.logo-edit-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin: 4px 0 12px; }
+.logo-edit-tools .spacer { flex: 1; }
+.logo-edit-tools .fd-check, .logo-brush-label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+.logo-brush-label input { width: 34px; height: 26px; padding: 2px; border: 1px solid var(--border); border-radius: 5px; background: var(--panel); cursor: pointer; }
+.logo-edit-tools button { white-space: nowrap; }
+.logo-edited { color: #e3b341 !important; }
+.logo-palette-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin: 0 0 12px; }
+.logo-palette { display: flex; flex-wrap: wrap; gap: 6px; }
+.logo-swatch { width: 25px; height: 25px; padding: 0; border: 1px solid #ffffff55; border-radius: 5px; cursor: pointer; }
+.logo-swatch:hover { transform: scale(1.12); }
+.logo-swatch.selected { outline: 2px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 4px #1119; }
+.logo-new-dialog { width: min(420px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--border);
+  border-radius: 12px; background: var(--panel); color: var(--text); box-shadow: 0 20px 60px #000b; }
+.logo-new-dialog::backdrop { background: #050709bb; }
+.logo-new-dialog form { padding: 18px; }
+.logo-new-dialog h2 { display: block; margin: 0 0 8px; color: var(--text); font-size: 17px; text-transform: none; letter-spacing: 0; }
+.logo-new-dialog form > p { margin: 0 0 14px; }
+.logo-new-dimensions { display: flex; gap: 12px; }
+.logo-new-dimensions label { display: grid; gap: 5px; flex: 1; color: var(--muted); font-size: 13px; }
+.logo-new-dimensions input { min-width: 0; width: 100%; }
+.logo-new-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.logo-new-dialog .logo-error { margin: 10px 0 0; font-size: 12px; }
+.logo-editor-dialog { width: min(1000px, calc(100vw - 28px)); max-width: calc(100vw - 28px); max-height: 92vh;
+  margin: auto; padding: 14px; border: 1px solid #59636b; border-radius: 12px; background: var(--panel);
+  color: var(--text); box-shadow: 0 20px 60px #000b; }
+.logo-editor-dialog::backdrop { background: #050709cc; }
+.logo-editor-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.logo-editor-head h2 { display: block; margin: 0 0 3px; color: var(--text); font-size: 16px; text-transform: none; letter-spacing: 0; }
+.logo-editor-head p { margin: 0 0 8px; }
+.logo-editor-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 10px; }
+.logo-editor-tools .muted { margin-left: auto; }
+.logo-editor-palette-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin: 0 0 10px; }
+.logo-editor-canvas-wrap { max-height: 72vh; overflow: auto; padding: 10px; border: 1px solid var(--border);
+  border-radius: 8px; background: #101417; }
+#logo-edit-canvas { display: block; max-width: none; image-rendering: pixelated; image-rendering: crisp-edges;
+  cursor: crosshair; touch-action: none; user-select: none; }
 .logo-canvas-wrap { display: flex; align-items: center; justify-content: center; min-height: 240px; max-height: 68vh;
   overflow: auto; padding: 24px; border: 1px solid var(--border); border-radius: 8px;
   background-color: #101417; background-image: linear-gradient(45deg, #ffffff08 25%, transparent 25%),
   linear-gradient(-45deg, #ffffff08 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ffffff08 75%),
   linear-gradient(-45deg, transparent 75%, #ffffff08 75%); background-size: 18px 18px;
   background-position: 0 0, 0 9px, 9px -9px, -9px 0; }
-#logo-canvas { flex: none; display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+.logo-canvas-stage { position: relative; flex: none; line-height: 0; }
+#logo-canvas { flex: none; display: block; image-rendering: pixelated; image-rendering: crisp-edges;
+  cursor: zoom-in; user-select: none; }
+#logo-canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .site-footer {
   position: fixed; z-index: 10; inset: auto 0 0;
   display: flex; justify-content: center; align-items: center; gap: 18px;

@@ -40,8 +40,12 @@ and a blank character can be appended. Changes stay in the browser until you dow
 the edited font file.
 
 The logo viewer lists the `.bin.gz` images in `jade/logo/`, decodes their compressed
-RGB565 pixels for preview, and shows the Jade branch, commit, tag and date behind those
-assets. Locally changed logo files are identified in the picker.
+RGB565 pixels for preview and editing, and shows the Jade branch, commit, tag and date
+behind those assets. Create a blank image with custom dimensions, zoom up to 32×, open a
+`.bin.gz` file from disk, pick a color from the image palette or use
+a custom color, and click the preview to open the pixel editor. Paint there and download
+the result as a new `.bin.gz` file. **Reload** restores the selected source image. Locally
+changed logo files are identified in the picker.
 
 On the left are:
 - the device screen and its buttons;

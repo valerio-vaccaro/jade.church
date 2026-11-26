@@ -224,7 +224,7 @@ function render() {
   }
 
   const cell = cellGeometry(font), z = zoomFor(cell);
-  const opts = { grid: $('#fd-grid').checked, box: $('#fd-box').checked };
+  const opts = { box: $('#fd-box').checked };
   table.style.setProperty('--fd-cell', `${Math.max(cell.w * z, 56)}px`);
   font.glyphs.forEach((g, index) => {
     const card = el('figure', 'fd-glyph' + (isModified(g) ? ' modified' : ''));
@@ -435,13 +435,13 @@ function showBase() {
     return;
   }
   const j = jadeInfo;
-  const ver = j.tags.length ? `tag ${j.tags.join(', ')}` : `no tag on this commit (${j.describe})`;
+  const tag = j.tags.length ? ` · tag ${j.tags.join(', ')}` : ` · no tag on this commit (${j.describe})`;
   const locallyChanged = j.modified.includes(source.file) || j.untracked.includes(source.file);
   box.append(el('div', 'fd-source-path', `${fontsDir}/${source.file}`),
-    `Branch ${j.branch || 'detached HEAD'} · last commit `);
+    `Branch ${j.branch || 'unknown'} · last commit `);
   const c = el('code', null, j.short);
   c.title = `${j.commit}\n${j.subject}`;
-  box.append(c, ` · ${ver}${locallyChanged ? ' · local modifications' : ''}`,
+  box.append(c, `${tag}${locallyChanged ? ' · local modifications' : ''}`,
     el('div', 'fd-source-subject', `${j.date} · ${j.subject}`));
   const name = source.file;
   if (locallyChanged) {
@@ -565,7 +565,7 @@ async function init() {
     load(f.name, await f.text(), f);
     $('#fd-file').value = '';
   };
-  for (const id of ['#fd-zoom', '#fd-grid', '#fd-box']) $(id).onchange = render;
+  for (const id of ['#fd-zoom', '#fd-box']) $(id).onchange = render;
   $('#fd-reload').onclick = reload;
   $('#fd-download').onclick = download;
   $('#fd-fix-count').onclick = fixHeaderCount;
